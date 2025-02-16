@@ -4,6 +4,8 @@ import { useAuthState } from "react-firebase-hooks/auth";
 import { auth } from "./firebase";
 import Login from "./pages/login";
 import Dashboard from "./pages/dashboard";
+import EditProfile from "./pages/editprofile";
+import AddClass from "./pages/addclass";
 import PrivateRoute from "./components/PrivateRoute";
 
 const App = () => {
@@ -12,6 +14,7 @@ const App = () => {
   return (
     <Routes>
       <Route path="/" element={user ? <Navigate to="/dashboard" /> : <Login />} />
+
       <Route
         path="/dashboard"
         element={
@@ -20,6 +23,25 @@ const App = () => {
           </PrivateRoute>
         }
       />
+
+      <Route
+        path="/edit-profile"
+        element={
+          <PrivateRoute>
+            <EditProfile />
+          </PrivateRoute>
+        }
+      />
+
+      <Route
+        path="/add-class"
+        element={
+          <PrivateRoute>
+            <AddClass />
+          </PrivateRoute>
+        }
+      />
+
     </Routes>
   );
 };
