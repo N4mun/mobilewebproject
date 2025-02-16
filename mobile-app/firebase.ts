@@ -17,6 +17,6 @@ const firebaseConfig = {
 export const FIREBASE_APP = initializeApp(firebaseConfig);
 export const FIREBASE_AUTH = initializeAuth(FIREBASE_APP, {
     persistence: getReactNativePersistence(ReactNativeAsyncStorage),
-});d
+});
 export const FIREBASE_DB = getFirestore(FIREBASE_APP);
 export const GOOGLE_AUTH_PROVIDER = new GoogleAuthProvider();
