@@ -34,8 +34,25 @@ const Login = () => {
     };
 
     return (
-        <Container maxWidth="sm" style={{ textAlign: "center", marginTop: "50px" }}>
-            <Card elevation={3} style={{ padding: "40px", borderRadius: "10px" }}>
+        <Container 
+            maxWidth="sm" 
+            sx={{
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "center",
+                height: "100vh",
+            }}
+        >
+            <Card 
+                elevation={3} 
+                sx={{ 
+                    padding: 4, 
+                    borderRadius: 2, 
+                    textAlign: "center", 
+                    width: "100%",
+                    maxWidth: 400
+                }}
+            >
                 <Typography variant="h4" fontWeight="bold" gutterBottom>
                     ระบบจัดการห้องเรียน
                 </Typography>
@@ -47,7 +64,7 @@ const Login = () => {
                         variant="contained"
                         color="primary"
                         onClick={handleLogin}
-                        style={{ padding: "10px 20px", fontSize: "16px" }}
+                        sx={{ padding: "10px 20px", fontSize: "16px" }}
                     >
                         Sign in with Google
                     </Button>
