@@ -49,7 +49,7 @@ const Dashboard = () => {
                 <Button
                     variant="outlined"
                     color="primary"
-                    style={{ marginTop: 10 }}
+                    style={{ margin: "10px 10px 0 0" }}
                     onClick={() => navigate("/edit-profile")}
                 >
                     แก้ไขข้อมูลส่วนตัว
@@ -69,6 +69,10 @@ const Dashboard = () => {
                 ห้องเรียนของฉัน
             </Typography>
 
+            <Button variant="contained" color="primary" onClick={() => navigate("/add-class")} style={{ marginTop: "20px" }}>
+                เพิ่มห้องเรียน
+            </Button>
+
             <Grid container spacing={3} style={{ marginTop: "10px" }}>
                 {classes.map((classData) => (
                     <Grid item xs={12} sm={6} md={4} key={classData.id}>
@@ -80,9 +84,12 @@ const Dashboard = () => {
                                 alt={classData.name}
                             />
                             <CardContent>
-                                <Typography variant="h6">{classData.name}</Typography>
+                                <Typography variant="h6">{classData.code}</Typography>
                                 <Typography variant="body2" color="textSecondary">
                                     {classData.subject || "ไม่มีคำอธิบาย"}
+                                </Typography>
+                                <Typography variant="body2" color="textSecondary">
+                                    {classData.name}
                                 </Typography>
                                 <Button
                                     variant="outlined"
@@ -97,10 +104,6 @@ const Dashboard = () => {
                     </Grid>
                 ))}
             </Grid>
-
-            <Button variant="contained" color="primary" onClick={() => navigate("/add-class")} style={{ marginTop: "20px" }}>
-                เพิ่มห้องเรียน
-            </Button>
         </div>
     );
 };
