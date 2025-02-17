@@ -76,13 +76,7 @@ const EditProfile = () => {
             <Typography variant="h4">แก้ไขข้อมูลส่วนตัว</Typography>
 
             <Card style={{ maxWidth: 400, margin: "20px auto", padding: "20px" }}>
-                <Avatar src={image ? URL.createObjectURL(image) : userData.photo} style={{ width: 100, height: 100, margin: "auto" }} />
-                
-                <Typography variant="body2" color="textSecondary" style={{ marginTop: 5 }}>
-                    แก้ไขรูปภาพ
-                </Typography>
-
-                <input type="file" accept="image/*" onChange={handleImageChange} style={{ margin: "10px 0" }} />
+                <Avatar src={userData.photo} style={{ width: 80, height: 80, margin: "auto" }} />
 
                 <TextField
                     label="ชื่อ"
@@ -100,22 +94,22 @@ const EditProfile = () => {
                     style={{ margin: "10px 0" }}
                 />
 
-                <Button
-                    variant="contained"
-                    color="primary"
-                    onClick={handleUpdateProfile}
-                    disabled={loading}
-                    style={{ margin: "10px" }}
-                >
-                    {loading ? "กำลังอัปโหลด..." : "บันทึก"}
+                {/* ออกแบบให้ "เพิ่มรูปภาพ" กับปุ่ม Choose File อยู่ใกล้กัน */}
+                <div style={{ display: "flex", alignItems: "center", margin: "10px 0" }}>
+                    <Typography variant="body2" color="textSecondary" style={{ marginRight: 10 }}>แก้ไขรูปภาพ</Typography>
+                    <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => setUserData({ ...userData, photo: URL.createObjectURL(e.target.files[0]) })}
+                        style={{ flex: 1 }}
+                    />
+                </div>
+
+                <Button variant="contained" color="primary" onClick={handleUpdateProfile} style={{ margin: "10px" }}>
+                    บันทึก
                 </Button>
 
-                <Button
-                    variant="outlined"
-                    color="secondary"
-                    onClick={() => navigate("/dashboard")}
-                    style={{ margin: "10px" }}
-                >
+                <Button variant="outlined" color="secondary" onClick={() => navigate("/dashboard")} style={{ margin: "10px" }}>
                     ยกเลิก
                 </Button>
             </Card>
