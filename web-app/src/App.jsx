@@ -9,14 +9,15 @@ import AddClass from "./pages/addclass";
 import PrivateRoute from "./components/PrivateRoute";
 
 const App = () => {
-  const [user] = useAuthState(auth);
+  const [user, loading] = useAuthState(auth);
+
+  if (loading) {
+    return <div>Loading...</div>; // ป้องกันหน้า Login โหลดก่อน Firebase
+  }
 
   return (
     <Routes>
-      {/* เปลี่ยน path="/" ให้ไปหน้า login โดยใช้ HashRouter */}
-      <Route path="/" element={<Navigate to="/login" />} />
-
-      <Route path="/login" element={<Login />} />
+      <Route path="/" element={user ? <Navigate to="/dashboard" /> : <Login />} />
 
       <Route
         path="/dashboard"

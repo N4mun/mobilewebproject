@@ -4,7 +4,12 @@ import { useAuthState } from "react-firebase-hooks/auth";
 import { auth } from "../firebase";
 
 const PrivateRoute = ({ children }) => {
-    const [user] = useAuthState(auth);
+    const [user, loading] = useAuthState(auth);
+
+    if (loading) {
+        return <div>Loading...</div>; // ป้องกันเด้งไปหน้า Login ขณะโหลด
+    }
+
     return user ? children : <Navigate to="/" />;
 };
 
