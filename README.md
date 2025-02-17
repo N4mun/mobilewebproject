@@ -1,3 +1,3 @@
 # mobilewebproject
 
-https://n4mun.github.io/mobilewebproject/#/
+https://n4mun.github.io/mobilewebproject/
