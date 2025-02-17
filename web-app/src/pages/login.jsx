@@ -34,8 +34,8 @@ const Login = () => {
     };
 
     return (
-        <Container 
-            maxWidth="sm" 
+        <Container
+            maxWidth="sm"
             sx={{
                 display: "flex",
                 justifyContent: "center",
@@ -43,16 +43,23 @@ const Login = () => {
                 height: "100vh",
             }}
         >
-            <Card 
-                elevation={3} 
-                sx={{ 
-                    padding: 4, 
-                    borderRadius: 2, 
-                    textAlign: "center", 
-                    width: "100%",
-                    maxWidth: 400
-                }}
-            >
+<Card 
+    elevation={3} 
+    sx={{ 
+        padding: 4, 
+        borderRadius: 2, 
+        textAlign: "center", 
+        width: "100%",
+        maxWidth: 400,
+        boxShadow: "0px 4px 10px rgba(1, 1, 1, 0.5)",
+        "&:hover": {
+            transform: "scale(1.05)",
+            boxShadow: "0px 6px 12px rgba(0, 0, 0, 0.4)",
+        }
+    }}
+>
+
+            
                 <Typography variant="h4" fontWeight="bold" gutterBottom>
                     ระบบจัดการห้องเรียน
                 </Typography>
@@ -60,14 +67,25 @@ const Login = () => {
                     ลงชื่อเข้าใช้เพื่อจัดการห้องเรียนของคุณ
                 </Typography>
                 <Box mt={3}>
-                    <Button
-                        variant="contained"
-                        color="primary"
-                        onClick={handleLogin}
-                        sx={{ padding: "10px 20px", fontSize: "16px" }}
-                    >
-                        Sign in with Google
-                    </Button>
+                <Button
+    variant="contained"
+    color="primary"
+    onClick={handleLogin}
+    sx={{ 
+        padding: "10px 20px", 
+        fontSize: "16px",
+        transition: "0.3s",
+        boxShadow: "0px 4px 8px rgba(0, 0, 0, 0.3)",
+        "&:hover": {
+            backgroundColor: "green",
+            transform: "scale(1.05)",
+            boxShadow: "0px 6px 12px rgba(0, 0, 0, 0.4)",
+        }
+    }}
+>
+    Sign in with Google
+</Button>
+
                 </Box>
             </Card>
         </Container>
