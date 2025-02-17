@@ -13,7 +13,10 @@ const App = () => {
 
   return (
     <Routes>
-      <Route path="/" element={user ? <Navigate to="/dashboard" /> : <Login />} />
+      {/* เปลี่ยน path="/" ให้ไปหน้า login โดยใช้ HashRouter */}
+      <Route path="/" element={<Navigate to="/login" />} />
+
+      <Route path="/login" element={<Login />} />
 
       <Route
         path="/dashboard"
@@ -41,7 +44,6 @@ const App = () => {
           </PrivateRoute>
         }
       />
-
     </Routes>
   );
 };
