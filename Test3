@@ -1,0 +1,108 @@
+1. การตั้งค่าเริ่มต้น
+
+git config --global user.name "ชื่อของคุณ"
+git config --global user.email "อีเมลของคุณ"
+
+กำหนดชื่อและอีเมลสำหรับการคอมมิตโค้ด
+2. สร้างหรือโคลน Repository
+
+git init
+
+สร้าง Git repository ใหม่ในโฟลเดอร์ปัจจุบัน
+
+git clone <URL>
+
+โคลน repository จาก GitHub หรือที่อื่น ๆ
+3. ตรวจสอบสถานะไฟล์
+
+git status
+
+ตรวจสอบสถานะของไฟล์ว่ามีการเปลี่ยนแปลงหรือไม่
+4. เพิ่มไฟล์ไปยัง Staging Area
+
+git add <ชื่อไฟล์>
+
+เพิ่มไฟล์เฉพาะไฟล์ไปยัง staging area
+
+git add .
+
+เพิ่มทุกไฟล์ที่เปลี่ยนแปลงไปยัง staging area
+5. บันทึกการเปลี่ยนแปลง (Commit)
+
+git commit -m "ข้อความอธิบายการเปลี่ยนแปลง"
+
+บันทึกการเปลี่ยนแปลงใน repository
+6. ดูประวัติการ Commit
+
+git log
+
+แสดงรายการ commit ที่ผ่านมา
+
+git log --oneline
+
+แสดง log แบบย่อ
+7. ส่งโค้ดไปยัง Remote Repository
+
+git push origin main
+
+ส่งโค้ดไปยัง branch main บน remote repository
+8. ดึงโค้ดจาก Remote Repository
+
+git pull origin main
+
+ดึงโค้ดล่าสุดจาก remote repository
+9. สร้างและเปลี่ยน Branch
+
+git branch <ชื่อ-branch>
+
+สร้าง branch ใหม่
+
+git checkout <ชื่อ-branch>
+
+เปลี่ยนไปใช้งาน branch ที่ระบุ
+
+git checkout -b <ชื่อ-branch>
+
+สร้างและเปลี่ยนไปใช้งาน branch ใหม่พร้อมกัน
+10. รวม Branch (Merge)
+
+git merge <ชื่อ-branch>
+
+รวม branch ที่ระบุเข้ากับ branch ปัจจุบัน
+11. รีเซ็ตการเปลี่ยนแปลง
+
+git reset --hard <commit-id>
+
+ย้อนกลับไปยัง commit ที่ระบุและลบการเปลี่ยนแปลงทั้งหมด
+
+git reset --soft <commit-id>
+
+ย้อนกลับไปยัง commit ที่ระบุแต่เก็บการเปลี่ยนแปลงไว้ใน staging
+12. ลบ Branch
+
+git branch -d <ชื่อ-branch>
+
+ลบ branch ที่ไม่ใช้งานแล้ว (ใช้ -D แทน -d หากต้องการบังคับลบ)
+13. ลบไฟล์จาก Git แต่ไม่ลบจากเครื่อง
+
+git rm --cached <ชื่อไฟล์>
+
+ลบไฟล์ออกจาก Git แต่ยังคงอยู่ในเครื่อง
+14. จัดการ Remote Repository
+
+git remote -v
+
+แสดงรายการ remote repository
+
+git remote add origin <URL>
+
+เพิ่ม remote repository ใหม่
+
+git remote remove origin
+
+ลบ remote repository
+15. แก้ไข Commit ล่าสุด
+
+git commit --amend -m "ข้อความใหม่"
+
+แก้ไข commit ล่าสุด (เช่น เปลี่ยนข้อความ)
