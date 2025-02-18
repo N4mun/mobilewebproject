@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from "react";
-import { Button, Card, CardContent, CardMedia, Typography, Avatar, Box, Grid } from "@mui/material";
+import { Button, Card, CardContent, CardMedia, Typography, Avatar, Box, Grid, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle } from "@mui/material";
 import { auth, db } from "../firebase";
 import { signOut } from "firebase/auth";
-import { doc, getDoc, collection, query, where, getDocs } from "firebase/firestore";
+import { doc, getDoc, collection, query, where, getDocs, deleteDoc } from "firebase/firestore";
 import { useNavigate } from "react-router-dom";
 
 const Dashboard = () => {
@@ -10,9 +10,11 @@ const Dashboard = () => {
     const navigate = useNavigate();
     const [userData, setUserData] = useState({ name: "", email: "", photo: "" });
     const [classes, setClasses] = useState([]);
+    const [openDialog, setOpenDialog] = useState(false);
+    const [selectedClass, setSelectedClass] = useState(null);
 
     useEffect(() => {
-        if (!user) return; // 🔹 ป้องกัน error ถ้าผู้ใช้ไม่ได้ล็อกอิน
+        if (!user) return;
 
         const fetchUserData = async () => {
             try {
@@ -44,6 +46,27 @@ const Dashboard = () => {
         fetchUserClasses();
     }, [user]);
 
+    // ฟังก์ชันเปิด Dialog ยืนยันการลบ
+    const confirmDelete = (classData) => {
+        setSelectedClass(classData);
+        setOpenDialog(true);
+    };
+
+    // ฟังก์ชันลบห้องเรียน
+    const handleDeleteClass = async () => {
+        if (!selectedClass) return;
+
+        try {
+            await deleteDoc(doc(db, "classroom", selectedClass.id));
+            setClasses(classes.filter((c) => c.id !== selectedClass.id));
+        } catch (error) {
+            console.error("Error deleting class:", error);
+        } finally {
+            setOpenDialog(false);
+            setSelectedClass(null);
+        }
+    };
+
     return (
         <Box sx={{ textAlign: "center", mt: 3, px: 2 }}>
             {/* ข้อมูลผู้ใช้ */}
@@ -71,10 +94,9 @@ const Dashboard = () => {
                 เพิ่มห้องเรียน
             </Button>
 
-            
-            <Grid container spacing={1} justifyContent="center"> 
+            <Grid container spacing={1} justifyContent="center">
                 {classes.map((classData) => (
-                    <Grid item xs={12} sm={6} md={3} key={classData.id} sx={{ px: 0.5 }}> 
+                    <Grid item xs={12} sm={6} md={3} key={classData.id} sx={{ px: 0.5 }}>
                         <Card sx={{ maxWidth: "100%", boxShadow: 3, height: 300, display: "flex", flexDirection: "column" }}>
                             <CardMedia
                                 component="img"
@@ -90,9 +112,12 @@ const Dashboard = () => {
                                 <Typography variant="body2" color="textSecondary" sx={{ mb: "auto" }}>
                                     {classData.name}
                                 </Typography>
-                                <Box sx={{ display: "flex", justifyContent: "center", mt: 1 }}>
+                                <Box sx={{ display: "flex", justifyContent: "center", gap: 1, mt: 1 }}>
                                     <Button variant="outlined" color="primary" onClick={() => navigate(`/classroom/${classData.id}`)}>
                                         ดูรายละเอียด
+                                    </Button>
+                                    <Button variant="contained" color="error" onClick={() => confirmDelete(classData)}>
+                                        ลบ
                                     </Button>
                                 </Box>
                             </CardContent>
@@ -101,6 +126,19 @@ const Dashboard = () => {
                 ))}
             </Grid>
 
+            {/* Dialog ยืนยันการลบ */}
+            <Dialog open={openDialog} onClose={() => setOpenDialog(false)}>
+                <DialogTitle>ยืนยันการลบ</DialogTitle>
+                <DialogContent>
+                    <DialogContentText>
+                        คุณแน่ใจหรือไม่ว่าต้องการลบห้องเรียน "{selectedClass?.name}"? การกระทำนี้ไม่สามารถย้อนกลับได้
+                    </DialogContentText>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setOpenDialog(false)} color="primary">ยกเลิก</Button>
+                    <Button onClick={handleDeleteClass} color="error">ลบ</Button>
+                </DialogActions>
+            </Dialog>
         </Box>
     );
 };
