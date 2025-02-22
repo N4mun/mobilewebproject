@@ -29,9 +29,15 @@ const EditProfile = () => {
 
     const handleImageChange = (e) => {
         if (e.target.files[0]) {
-            setImage(e.target.files[0]);
+            const file = e.target.files[0];
+            setImage(file);
+    
+            // แสดงตัวอย่างรูปที่เลือก
+            const imagePreview = URL.createObjectURL(file);
+            setUserData((prev) => ({ ...prev, photo: imagePreview }));
         }
     };
+    
 
     const uploadImageToCloudinary = async (file) => {
         const formData = new FormData();
@@ -100,7 +106,7 @@ const EditProfile = () => {
                     <input
                         type="file"
                         accept="image/*"
-                        onChange={(e) => setUserData({ ...userData, photo: URL.createObjectURL(e.target.files[0]) })}
+                        onChange={handleImageChange}
                         style={{ flex: 1 }}
                     />
                 </div>

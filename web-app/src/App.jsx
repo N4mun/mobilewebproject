@@ -6,6 +6,7 @@ import Login from "./pages/login";
 import Dashboard from "./pages/dashboard";
 import EditProfile from "./pages/editprofile";
 import AddClass from "./pages/addclass";
+import Classroom from "./pages/classroom";
 import PrivateRoute from "./components/PrivateRoute";
 
 const App = () => {
@@ -45,6 +46,16 @@ const App = () => {
           </PrivateRoute>
         }
       />
+
+      <Route
+        path="/classroom/:cid"
+        element={
+          <PrivateRoute>
+            <Classroom />
+          </PrivateRoute>
+        }
+      />
+
     </Routes>
   );
 };
