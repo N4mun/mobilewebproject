@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Button, Card, TextField, Typography, Avatar } from "@mui/material";
+import { AppBar, Toolbar, Box, Button, Card, TextField, Typography, Avatar } from "@mui/material";
 import { auth, db } from "../firebase";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
 import { useNavigate } from "react-router-dom";
@@ -31,13 +31,13 @@ const EditProfile = () => {
         if (e.target.files[0]) {
             const file = e.target.files[0];
             setImage(file);
-    
+
             // แสดงตัวอย่างรูปที่เลือก
             const imagePreview = URL.createObjectURL(file);
             setUserData((prev) => ({ ...prev, photo: imagePreview }));
         }
     };
-    
+
 
     const uploadImageToCloudinary = async (file) => {
         const formData = new FormData();
@@ -78,48 +78,60 @@ const EditProfile = () => {
     };
 
     return (
-        <div style={{ textAlign: "center", marginTop: "20px" }}>
-            <Typography variant="h4">แก้ไขข้อมูลส่วนตัว</Typography>
+        <Box>
 
-            <Card style={{ maxWidth: 400, margin: "20px auto", padding: "20px" }}>
-                <Avatar src={userData.photo} style={{ width: 80, height: 80, margin: "auto" }} />
+            <AppBar position="static">
+                <Toolbar>
+                    <Typography variant="h6" sx={{ flexGrow: 1 }}>
+                        ระบบจัดการห้องเรียน
+                    </Typography>
+                    <Button color="inherit" onClick={() => navigate("/dashboard")}>หน้าหลัก</Button>
+                </Toolbar>
+            </AppBar>
+            
+            <div style={{ textAlign: "center", marginTop: "20px" }}>
+                <Typography variant="h4">แก้ไขข้อมูลส่วนตัว</Typography>
 
-                <TextField
-                    label="ชื่อ"
-                    value={userData.name}
-                    onChange={(e) => setUserData({ ...userData, name: e.target.value })}
-                    fullWidth
-                    style={{ margin: "10px 0" }}
-                />
+                <Card style={{ maxWidth: 400, margin: "20px auto", padding: "20px" }}>
+                    <Avatar src={userData.photo} style={{ width: 80, height: 80, margin: "auto" }} />
 
-                <TextField
-                    label="อีเมล"
-                    value={userData.email}
-                    disabled
-                    fullWidth
-                    style={{ margin: "10px 0" }}
-                />
-
-                {/* ออกแบบให้ "เพิ่มรูปภาพ" กับปุ่ม Choose File อยู่ใกล้กัน */}
-                <div style={{ display: "flex", alignItems: "center", margin: "10px 0" }}>
-                    <Typography variant="body2" color="textSecondary" style={{ marginRight: 10 }}>แก้ไขรูปภาพ</Typography>
-                    <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handleImageChange}
-                        style={{ flex: 1 }}
+                    <TextField
+                        label="ชื่อ"
+                        value={userData.name}
+                        onChange={(e) => setUserData({ ...userData, name: e.target.value })}
+                        fullWidth
+                        style={{ margin: "10px 0" }}
                     />
-                </div>
 
-                <Button variant="contained" color="primary" onClick={handleUpdateProfile} style={{ margin: "10px" }}>
-                    บันทึก
-                </Button>
+                    <TextField
+                        label="อีเมล"
+                        value={userData.email}
+                        disabled
+                        fullWidth
+                        style={{ margin: "10px 0" }}
+                    />
 
-                <Button variant="outlined" color="secondary" onClick={() => navigate("/dashboard")} style={{ margin: "10px" }}>
-                    ยกเลิก
-                </Button>
-            </Card>
-        </div>
+                    {/* ออกแบบให้ "เพิ่มรูปภาพ" กับปุ่ม Choose File อยู่ใกล้กัน */}
+                    <div style={{ display: "flex", alignItems: "center", margin: "10px 0" }}>
+                        <Typography variant="body2" color="textSecondary" style={{ marginRight: 10 }}>แก้ไขรูปภาพ</Typography>
+                        <input
+                            type="file"
+                            accept="image/*"
+                            onChange={handleImageChange}
+                            style={{ flex: 1 }}
+                        />
+                    </div>
+
+                    <Button variant="contained" color="primary" onClick={handleUpdateProfile} style={{ margin: "10px" }}>
+                        บันทึก
+                    </Button>
+
+                    <Button variant="outlined" color="secondary" onClick={() => navigate("/dashboard")} style={{ margin: "10px" }}>
+                        ยกเลิก
+                    </Button>
+                </Card>
+            </div>
+        </Box>
     );
 };
 

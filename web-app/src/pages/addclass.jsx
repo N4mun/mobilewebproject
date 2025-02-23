@@ -1,6 +1,6 @@
 //addclass.jsx
 import React, { useState } from "react";
-import { Button, TextField, Card, Typography } from "@mui/material";
+import { AppBar, Toolbar, Box, Button, TextField, Card, Typography } from "@mui/material";
 import { db, auth } from "../firebase";
 import { collection, addDoc, doc, setDoc } from "firebase/firestore";
 import { useNavigate } from "react-router-dom";
@@ -83,26 +83,38 @@ const AddClass = () => {
     };
 
     return (
-        <div style={{ textAlign: "center", marginTop: "20px" }}>
-            <Typography variant="h4">สร้างคลาสใหม่</Typography>
-            <Card style={{ maxWidth: 400, margin: "20px auto", padding: "20px" }}>
-                <TextField label="รหัสวิชา" value={courseCode} onChange={(e) => setCourseCode(e.target.value)} fullWidth style={{ marginBottom: 10 }} />
-                <TextField label="ชื่อวิชา" value={subjectName} onChange={(e) => setSubjectName(e.target.value)} fullWidth style={{ marginBottom: 10 }} />
-                <TextField label="ชื่อคลาส" value={className} onChange={(e) => setClassName(e.target.value)} fullWidth style={{ marginBottom: 10 }} />
-                
-                <div style={{ display: "flex", alignItems: "center", marginBottom: 20 }}>
-                    <Typography variant="body2" color="textSecondary" style={{ marginRight: 10 }}>เพิ่มรูปภาพ</Typography>
-                    <input type="file" accept="image/*" onChange={handleImageChange} style={{ flex: 1 }} />
-                </div>
+        <Box>
 
-                <Button variant="contained" color="primary" onClick={handleCreateClass} disabled={loading}>
-                    {loading ? "กำลังสร้าง..." : "สร้างคลาส"}
-                </Button>
-                <Button variant="outlined" color="secondary" onClick={() => navigate("/dashboard")} style={{ margin: "10px" }}>
-                                ยกเลิก
-                </Button>
-            </Card>
-        </div>
+            <AppBar position="static">
+                <Toolbar>
+                    <Typography variant="h6" sx={{ flexGrow: 1 }}>
+                        ระบบจัดการห้องเรียน
+                    </Typography>
+                    <Button color="inherit" onClick={() => navigate("/dashboard")}>หน้าหลัก</Button>
+                </Toolbar>
+            </AppBar>
+
+            <div style={{ textAlign: "center", marginTop: "20px" }}>
+                <Typography variant="h4">สร้างคลาสใหม่</Typography>
+                <Card style={{ maxWidth: 400, margin: "20px auto", padding: "20px" }}>
+                    <TextField label="รหัสวิชา" value={courseCode} onChange={(e) => setCourseCode(e.target.value)} fullWidth style={{ marginBottom: 10 }} />
+                    <TextField label="ชื่อวิชา" value={subjectName} onChange={(e) => setSubjectName(e.target.value)} fullWidth style={{ marginBottom: 10 }} />
+                    <TextField label="ชื่อคลาส" value={className} onChange={(e) => setClassName(e.target.value)} fullWidth style={{ marginBottom: 10 }} />
+
+                    <div style={{ display: "flex", alignItems: "center", marginBottom: 20 }}>
+                        <Typography variant="body2" color="textSecondary" style={{ marginRight: 10 }}>เพิ่มรูปภาพ</Typography>
+                        <input type="file" accept="image/*" onChange={handleImageChange} style={{ flex: 1 }} />
+                    </div>
+
+                    <Button variant="contained" color="primary" onClick={handleCreateClass} disabled={loading}>
+                        {loading ? "กำลังสร้าง..." : "สร้างคลาส"}
+                    </Button>
+                    <Button variant="outlined" color="secondary" onClick={() => navigate("/dashboard")} style={{ margin: "10px" }}>
+                        ยกเลิก
+                    </Button>
+                </Card>
+            </div>
+        </Box>
     );
 };
 

@@ -43,7 +43,7 @@ const AddCourseScreen = ({ navigation, route }) => {
             await setDoc(userRef, { status: 2 });
 
             Alert.alert('Success', 'ลงทะเบียนเข้าห้องเรียนสำเร็จ!');
-            navigation.goBack();
+            navigation.navigate('AddCourse')
         } catch (error) {
             Alert.alert('Error', 'ไม่สามารถลงทะเบียนได้: ' + error.message);
         } finally {
@@ -88,7 +88,7 @@ const AddCourseScreen = ({ navigation, route }) => {
             />
             <Button
                 title="ย้อนกลับ"
-                onPress={() => navigation.goBack()}
+                onPress={() => navigation.navigate('Home')}
                 disabled={loading}
             />
             {loading && <Text>กำลังดำเนินการ...</Text>}
