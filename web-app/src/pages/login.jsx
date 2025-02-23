@@ -24,7 +24,6 @@ const Login = () => {
                     email: user.email,
                     photo: user.photoURL,
                     status: 1,
-                    classroom: {},
                 });
             }
 

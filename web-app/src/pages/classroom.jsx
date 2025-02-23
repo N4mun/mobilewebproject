@@ -77,7 +77,7 @@ const ClassroomPage = () => {
                         {students.map((student, index) => (
                             <TableRow key={student.id}>
                                 <TableCell>{index + 1}</TableCell>
-                                <TableCell>{student.id}</TableCell>
+                                <TableCell>{student.stdid}</TableCell>
                                 <TableCell>{student.name}</TableCell>
                             </TableRow>
                         ))}

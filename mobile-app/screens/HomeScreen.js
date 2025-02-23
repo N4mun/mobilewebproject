@@ -1,47 +1,29 @@
-import React, { useState, useEffect } from "react";
-import { View, Text, TextInput, Button } from "react-native";
-import { auth, db } from "../firebaseConfig";
-import { collection, doc, setDoc, getDoc } from "firebase/firestore";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { BarCodeScanner } from "expo-barcode-scanner";
+import React from 'react';
+import { View, Text, Button, StyleSheet } from 'react-native';
+import { signOut } from '@firebase/auth';
+import { auth } from '../firebaseConfig';
+const HomeScreen = ({ navigation, user }) => {
 
-const HomeScreen = ({ navigation }) => {
-    const [cid, setCid] = useState("");
-    const [studentId, setStudentId] = useState("");
-    const [name, setName] = useState("");
-    const [scanned, setScanned] = useState(false);
-
-    const handleJoinCourse = async () => {
-        const uid = auth.currentUser.uid;
-        try {
-            await setDoc(doc(db, `classroom/${cid}/students/${uid}`), {
-                stdid: studentId,
-                name: name,
-            });
-            await setDoc(doc(db, `users/${uid}/classroom/${cid}`), { status: 2 });
-            AsyncStorage.setItem("cid", cid);
-            alert("ลงทะเบียนสำเร็จ");
-        } catch (error) {
-            console.error("Error joining course:", error);
-        }
+    const handleLogout = async () => {
+        await signOut(auth);
+        navigation.replace('Auth');
     };
-
-    const handleScan = ({ type, data }) => {
-        setScanned(true);
-        setCid(data);
-    };
-
+    
     return (
-        <View>
-            <Text>โปรไฟล์ผู้ใช้</Text>
-            <Text>เพิ่มวิชา</Text>
-            <TextInput placeholder="รหัสวิชา (CID)" onChangeText={setCid} value={cid} />
-            <BarCodeScanner onBarCodeScanned={scanned ? undefined : handleScan} style={{ height: 300, width: "100%" }} />
-            <TextInput placeholder="รหัสนักศึกษา" onChangeText={setStudentId} value={studentId} />
-            <TextInput placeholder="ชื่อ-สกุล" onChangeText={setName} value={name} />
-            <Button title="ลงทะเบียน" onPress={handleJoinCourse} />
+        <View style={styles.container}>
+            <Text style={styles.title}>Welcome</Text>
+            <Text style={styles.emailText}>{user?.email}</Text>
+            <Button title="เพิ่มวิชา" onPress={() => navigation.navigate('AddCourse')} />
+            <Button title="Logout" onPress={handleLogout} color="#e74c3c" />
         </View>
     );
 };
+
+const styles = StyleSheet.create({
+    container: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 16, backgroundColor: '#fff' },
+    title: { fontSize: 24, marginBottom: 16 },
+    emailText: { fontSize: 18, marginBottom: 20 }
+
+});
 
 export default HomeScreen;

@@ -1,50 +1,46 @@
 import React, { useState, useEffect } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
-import { createStackNavigator } from '@react-navigation/stack';
-import { onAuthStateChanged, signOut } from "firebase/auth";
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { onAuthStateChanged, signOut } from '@firebase/auth';
 import { auth } from './firebaseConfig';
-import LoginScreen from './screens/LoginScreen';
-import { View, Text, Button, StyleSheet } from 'react-native';
+import AuthScreen from './screens/AuthScreen';
+import HomeScreen from './screens/HomeScreen';
+import AddCourseScreen from './screens/AddCourseScreen';
 
-const Stack = createStackNavigator();
+const Stack = createNativeStackNavigator();
 
-function HomeScreen({ navigation }) {
-  return (
-    <View style={styles.container}>
-      <Text>Welcome to Home!</Text>
-      <Button title="Logout" onPress={async () => {
-        await signOut(auth);
-        navigation.replace("Login");
-      }} />
-    </View>
-  );
-}
-
-export default function App() {
+const App = () => {
   const [user, setUser] = useState(null);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setUser(user);
     });
-    return unsubscribe;
+    return () => unsubscribe();
   }, []);
+
+  const handleLogout = async () => {
+    await signOut(auth);
+  };
 
   return (
     <NavigationContainer>
-      <Stack.Navigator initialRouteName={user ? "Home" : "Login"}>
-        <Stack.Screen name="Login" component={LoginScreen} />
-        <Stack.Screen name="Home" component={HomeScreen} />
+      <Stack.Navigator>
+        {user ? (
+          <>
+            <Stack.Screen name="Home">
+              {(props) => <HomeScreen {...props} user={user} handleLogout={handleLogout} />}
+            </Stack.Screen>
+            <Stack.Screen name="AddCourse">
+              {(props) => <AddCourseScreen {...props} user={user} />}
+            </Stack.Screen>
+          </>
+        ) : (
+          <Stack.Screen name="Auth" component={AuthScreen} />
+        )}
       </Stack.Navigator>
     </NavigationContainer>
   );
-}
+};
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});
+export default App;
