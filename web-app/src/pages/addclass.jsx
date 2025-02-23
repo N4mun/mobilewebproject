@@ -98,6 +98,9 @@ const AddClass = () => {
                 <Button variant="contained" color="primary" onClick={handleCreateClass} disabled={loading}>
                     {loading ? "กำลังสร้าง..." : "สร้างคลาส"}
                 </Button>
+                <Button variant="outlined" color="secondary" onClick={() => navigate("/dashboard")} style={{ margin: "10px" }}>
+                                ยกเลิก
+                </Button>
             </Card>
         </div>
     );
