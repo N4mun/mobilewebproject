@@ -1,4 +1,3 @@
-// AuthScreen.js
 import React, { useState } from 'react';
 import { View, Text, TextInput, Button, StyleSheet, ActivityIndicator, Alert } from 'react-native';
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from '@firebase/auth';
@@ -27,20 +26,45 @@ const AuthScreen = ({ navigation }) => {
                 });
                 Alert.alert('Success', 'Account created!');
             }
-            navigation.replace('Home');
+            // แทนที่ replace ด้วย navigate หรือปล่อยให้ onAuthStateChanged จัดการ
+            // navigation.replace('Home');
         } catch (error) {
             Alert.alert('Error', error.message);
+        } finally {
+            setLoading(false);
         }
-        setLoading(false);
     };
 
     return (
         <View style={styles.container}>
             <Text style={styles.title}>{isLogin ? 'Sign In' : 'Sign Up'}</Text>
-            <TextInput style={styles.input} value={email} onChangeText={setEmail} placeholder="Email" autoCapitalize="none" />
-            <TextInput style={styles.input} value={password} onChangeText={setPassword} placeholder="Password" secureTextEntry />
-            {loading ? <ActivityIndicator size="small" color="#3498db" /> : <Button title={isLogin ? 'Sign In' : 'Sign Up'} onPress={handleAuthentication} color="#3498db" />}
-            <Text style={styles.toggleText} onPress={() => setIsLogin(!isLogin)}>
+            <TextInput
+                style={styles.input}
+                value={email}
+                onChangeText={setEmail}
+                placeholder="Email"
+                autoCapitalize="none"
+            />
+            <TextInput
+                style={styles.input}
+                value={password}
+                onChangeText={setPassword}
+                placeholder="Password"
+                secureTextEntry
+            />
+            {loading ? (
+                <ActivityIndicator size="small" color="#3498db" />
+            ) : (
+                <Button
+                    title={isLogin ? 'Sign In' : 'Sign Up'}
+                    onPress={handleAuthentication}
+                    color="#3498db"
+                />
+            )}
+            <Text
+                style={styles.toggleText}
+                onPress={() => setIsLogin(!isLogin)}
+            >
                 {isLogin ? 'Need an account? Sign Up' : 'Already have an account? Sign In'}
             </Text>
         </View>
@@ -51,7 +75,7 @@ const styles = StyleSheet.create({
     container: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 16, backgroundColor: '#f0f0f0' },
     title: { fontSize: 24, marginBottom: 16 },
     input: { height: 40, borderColor: '#ddd', borderWidth: 1, marginBottom: 16, padding: 8, width: '80%', borderRadius: 4 },
-    toggleText: { color: '#3498db', marginTop: 20, textAlign: 'center' }
+    toggleText: { color: '#3498db', marginTop: 20, textAlign: 'center' },
 });
 
 export default AuthScreen;

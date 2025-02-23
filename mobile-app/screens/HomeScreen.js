@@ -6,7 +6,6 @@ const HomeScreen = ({ navigation, user }) => {
 
     const handleLogout = async () => {
         await signOut(auth);
-        navigation.replace('Auth');
     };
     
     return (

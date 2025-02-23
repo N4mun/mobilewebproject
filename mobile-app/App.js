@@ -6,6 +6,7 @@ import { auth } from './firebaseConfig';
 import AuthScreen from './screens/AuthScreen';
 import HomeScreen from './screens/HomeScreen';
 import AddCourseScreen from './screens/AddCourseScreen';
+import QRScannerScreen from './screens/QRScannerScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -34,6 +35,7 @@ const App = () => {
             <Stack.Screen name="AddCourse">
               {(props) => <AddCourseScreen {...props} user={user} />}
             </Stack.Screen>
+            <Stack.Screen name="QRScannerScreen" component={QRScannerScreen} />
           </>
         ) : (
           <Stack.Screen name="Auth" component={AuthScreen} />

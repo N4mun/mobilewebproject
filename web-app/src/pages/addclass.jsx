@@ -1,7 +1,8 @@
+//addclass.jsx
 import React, { useState } from "react";
 import { Button, TextField, Card, Typography } from "@mui/material";
 import { db, auth } from "../firebase";
-import { collection, addDoc } from "firebase/firestore";
+import { collection, addDoc, doc, setDoc } from "firebase/firestore";
 import { useNavigate } from "react-router-dom";
 
 const CLOUDINARY_URL = import.meta.env.VITE_CLOUDINARY_URL;
@@ -32,7 +33,7 @@ const AddClass = () => {
                 body: formData,
             });
             const data = await response.json();
-            return data.secure_url; // URL ของรูปที่อัปโหลดสำเร็จ
+            return data.secure_url;
         } catch (error) {
             console.error("Upload failed:", error);
             return "";
@@ -47,20 +48,29 @@ const AddClass = () => {
 
         setLoading(true);
         let imageUrl = "";
+        const user = auth.currentUser;
+
+        if (!user) {
+            alert("กรุณาเข้าสู่ระบบก่อน");
+            setLoading(false);
+            return;
+        }
 
         try {
             if (image) {
                 imageUrl = await uploadImageToCloudinary(image);
             }
 
-            await addDoc(collection(db, "classroom"), {
+            const classRef = await addDoc(collection(db, "classroom"), {
                 code: courseCode,
                 subject: subjectName,
                 name: className,
                 image: imageUrl,
-                owner: auth.currentUser?.uid,
+                owner: user.uid,
                 createdAt: new Date(),
             });
+
+            await setDoc(doc(db, "users", user.uid, "classroom", classRef.id), { status: 1 });
 
             alert("สร้างคลาสสำเร็จ!");
             navigate("/dashboard");
@@ -73,26 +83,23 @@ const AddClass = () => {
     };
 
     return (
-<div style={{ textAlign: "center", marginTop: "20px" }}>
-    <Typography variant="h4">สร้างคลาสใหม่</Typography>
-    <Card style={{ maxWidth: 400, margin: "20px auto", padding: "20px" }}>
-        <TextField label="รหัสวิชา" value={courseCode} onChange={(e) => setCourseCode(e.target.value)} fullWidth style={{ marginBottom: 10 }} />
-        <TextField label="ชื่อวิชา" value={subjectName} onChange={(e) => setSubjectName(e.target.value)} fullWidth style={{ marginBottom: 10 }} />
-        <TextField label="ชื่อคลาส" value={className} onChange={(e) => setClassName(e.target.value)} fullWidth style={{ marginBottom: 10 }} />
-        
-        {/* จัดให้อยูใกล้กันมากขึ้น */}
-        <div style={{ display: "flex", alignItems: "center", marginBottom: 20 }}>
-            <Typography variant="body2" color="textSecondary" style={{ marginRight: 10 }}>เพิ่มรูปภาพ</Typography>
-            <input type="file" accept="image/*" onChange={handleImageChange} style={{ flex: 1 }} />
+        <div style={{ textAlign: "center", marginTop: "20px" }}>
+            <Typography variant="h4">สร้างคลาสใหม่</Typography>
+            <Card style={{ maxWidth: 400, margin: "20px auto", padding: "20px" }}>
+                <TextField label="รหัสวิชา" value={courseCode} onChange={(e) => setCourseCode(e.target.value)} fullWidth style={{ marginBottom: 10 }} />
+                <TextField label="ชื่อวิชา" value={subjectName} onChange={(e) => setSubjectName(e.target.value)} fullWidth style={{ marginBottom: 10 }} />
+                <TextField label="ชื่อคลาส" value={className} onChange={(e) => setClassName(e.target.value)} fullWidth style={{ marginBottom: 10 }} />
+                
+                <div style={{ display: "flex", alignItems: "center", marginBottom: 20 }}>
+                    <Typography variant="body2" color="textSecondary" style={{ marginRight: 10 }}>เพิ่มรูปภาพ</Typography>
+                    <input type="file" accept="image/*" onChange={handleImageChange} style={{ flex: 1 }} />
+                </div>
+
+                <Button variant="contained" color="primary" onClick={handleCreateClass} disabled={loading}>
+                    {loading ? "กำลังสร้าง..." : "สร้างคลาส"}
+                </Button>
+            </Card>
         </div>
-
-        <Button variant="contained" color="primary" onClick={handleCreateClass} disabled={loading}>
-            {loading ? "กำลังสร้าง..." : "สร้างคลาส"}
-        </Button>
-    </Card>
-</div>
-
-
     );
 };
 
