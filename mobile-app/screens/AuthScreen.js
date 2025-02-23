@@ -21,7 +21,6 @@ const AuthScreen = ({ navigation }) => {
                 const uid = userCredential.user.uid;
                 await setDoc(doc(db, 'users', uid), {
                     email: userCredential.user.email,
-                    status: 2,
                     createdAt: serverTimestamp(),
                 });
                 Alert.alert('Success', 'Account created!');

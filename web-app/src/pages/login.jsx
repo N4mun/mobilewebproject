@@ -22,8 +22,7 @@ const Login = () => {
                 await setDoc(userRef, {
                     name: user.displayName,
                     email: user.email,
-                    photo: user.photoURL,
-                    status: 1,
+                    photo: user.photoURL
                 });
             }
 
