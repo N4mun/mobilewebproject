@@ -9,6 +9,7 @@ import AddClass from "./pages/addclass";
 import Classroom from "./pages/classroom";
 import Checkin from "./pages/checkin";
 import PrivateRoute from "./components/PrivateRoute";
+import Questions from "./pages/questions";
 
 const App = () => {
   const [user, loading] = useAuthState(auth);
@@ -62,6 +63,15 @@ const App = () => {
         element={
           <PrivateRoute>
             <Checkin />
+          </PrivateRoute>
+        }
+      />
+
+      <Route
+        path="/questions"
+        element={
+          <PrivateRoute>
+            <Questions />
           </PrivateRoute>
         }
       />

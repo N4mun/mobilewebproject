@@ -4,6 +4,7 @@ import { AppBar, Toolbar, Box, Button, TextField, Card, Typography } from "@mui/
 import { db, auth } from "../firebase";
 import { collection, addDoc, doc, setDoc } from "firebase/firestore";
 import { useNavigate } from "react-router-dom";
+import { QRCodeCanvas } from "qrcode.react";
 
 const CLOUDINARY_URL = import.meta.env.VITE_CLOUDINARY_URL;
 const UPLOAD_PRESET = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET;
@@ -112,6 +113,12 @@ const AddClass = () => {
                     <Button variant="outlined" color="secondary" onClick={() => navigate("/dashboard")} style={{ margin: "10px" }}>
                         ยกเลิก
                     </Button>
+                    {classRef && (
+                        <div style={{ marginTop: "20px" }}>
+                            <Typography variant="h6">QR Code สำหรับเข้าห้องเรียน</Typography>
+                            <QRCodeCanvas value={classRef.id} size={128} />
+                        </div>
+                    )}
                 </Card>
             </div>
         </Box>
