@@ -3,7 +3,8 @@ import { useParams, useNavigate } from "react-router-dom";
 import { db } from "../firebase";
 import { doc, getDoc, collection, addDoc, getDocs, updateDoc, deleteDoc } from "firebase/firestore";
 import { QRCodeCanvas } from "qrcode.react";
-import { AppBar, Toolbar, Typography, Button, Card, CardContent, CardMedia, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Box } from "@mui/material";
+import { AppBar, Toolbar, Typography, Button, Card, CardContent, CardMedia, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Box, TextField, Dialog, DialogTitle, DialogContent, DialogActions, List, ListItem, ListItemText, Divider, IconButton } from "@mui/material";
+import { Delete, Edit } from "@mui/icons-material";
 
 const ClassroomPage = () => {
     const { cid } = useParams();
@@ -14,6 +15,11 @@ const ClassroomPage = () => {
     const [loading, setLoading] = useState(true);
     const [showTable, setShowTable] = useState(false);
     const [showQRCode, setShowQRCode] = useState(false);
+    const [openQuestionDialog, setOpenQuestionDialog] = useState(false);
+    const [question, setQuestion] = useState("");
+    const [answer, setAnswer] = useState("");
+    const [questions, setQuestions] = useState([]);
+    const [editingQuestion, setEditingQuestion] = useState(null); // State สำหรับเก็บคำถามที่กำลังแก้ไข
 
     useEffect(() => {
         const fetchData = async () => {
@@ -33,6 +39,11 @@ const ClassroomPage = () => {
                 const checkinRef = collection(db, `classroom/${cid}/checkin`);
                 const checkinSnap = await getDocs(checkinRef);
                 setCheckins(checkinSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+
+                // ดึงข้อมูลคำถาม
+                const questionsRef = collection(db, `classroom/${cid}/questions`);
+                const questionsSnap = await getDocs(questionsRef);
+                setQuestions(questionsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
             } catch (error) {
                 console.error("Error fetching data:", error);
             } finally {
@@ -59,6 +70,57 @@ const ClassroomPage = () => {
         } catch (error) {
             console.error("Error removing student:", error);
         }
+    };
+
+    const handleOpenQuestionDialog = () => {
+        setOpenQuestionDialog(true);
+    };
+
+    const handleCloseQuestionDialog = () => {
+        setOpenQuestionDialog(false);
+        setQuestion("");
+        setAnswer("");
+        setEditingQuestion(null); // รีเซ็ตการแก้ไข
+    };
+
+    const handleSaveQuestion = async () => {
+        try {
+            const questionsRef = collection(db, `classroom/${cid}/questions`);
+            const newQuestion = {
+                question,
+                answer,
+                timestamp: new Date()
+            };
+            if (editingQuestion) {
+                // แก้ไขคำถามที่มีอยู่
+                const questionRef = doc(db, `classroom/${cid}/questions`, editingQuestion.id);
+                await updateDoc(questionRef, newQuestion);
+                setQuestions(questions.map(q => q.id === editingQuestion.id ? { ...q, ...newQuestion } : q));
+            } else {
+                // เพิ่มคำถามใหม่
+                const docRef = await addDoc(questionsRef, newQuestion);
+                setQuestions([...questions, { id: docRef.id, ...newQuestion }]);
+            }
+            handleCloseQuestionDialog();
+        } catch (error) {
+            console.error("Error saving question:", error);
+        }
+    };
+
+    const handleDeleteQuestion = async (questionId) => {
+        try {
+            await deleteDoc(doc(db, `classroom/${cid}/questions`, questionId));
+            setQuestions(questions.filter(q => q.id !== questionId));
+        } catch (error) {
+            console.error("Error deleting question:", error);
+        }
+    };
+
+    const handleEditQuestion = (question) => {
+        setQuestion(question.question);
+        setAnswer(question.answer);
+        setEditingQuestion(question);
+        setOpenQuestionDialog(true);
     };
 
     if (loading) return <Typography>Loading...</Typography>;
@@ -119,6 +181,14 @@ const ClassroomPage = () => {
                     >
                         {showTable ? "ซ่อนตารางรายชื่อ" : "แสดงตารางรายชื่อ"}
                     </Button>
+                    <Button
+                        variant="contained"
+                        color="secondary"
+                        onClick={handleOpenQuestionDialog}
+                        sx={{ minWidth: 150 }}
+                    >
+                        เพิ่มคำถาม
+                    </Button>
                 </Box>
 
                 {showTable && (
@@ -159,7 +229,62 @@ const ClassroomPage = () => {
                         </TableContainer>
                     </Box>
                 )}
+
+                {/* แสดงรายการคำถาม */}
+                <Box sx={{ mt: 4 }}>
+                    <Typography variant="h5">รายการคำถาม</Typography>
+                    <List sx={{ width: '100%', maxWidth: 600, mx: 'auto', bgcolor: 'background.paper' }}>
+                        {questions.map((q, index) => (
+                            <React.Fragment key={q.id}>
+                                <ListItem alignItems="flex-start">
+                                    <ListItemText
+                                        primary={`คำถามที่ ${index + 1}: ${q.question}`}
+                                        secondary={`คำตอบ: ${q.answer}`}
+                                    />
+                                    <IconButton onClick={() => handleEditQuestion(q)}>
+                                        <Edit />
+                                    </IconButton>
+                                    <IconButton onClick={() => handleDeleteQuestion(q.id)}>
+                                        <Delete />
+                                    </IconButton>
+                                </ListItem>
+                                {index < questions.length - 1 && <Divider />}
+                            </React.Fragment>
+                        ))}
+                    </List>
+                </Box>
             </Box>
+
+            <Dialog open={openQuestionDialog} onClose={handleCloseQuestionDialog}>
+                <DialogTitle>{editingQuestion ? "แก้ไขคำถาม" : "เพิ่มคำถาม"}</DialogTitle>
+                <DialogContent>
+                    <TextField
+                        autoFocus
+                        margin="dense"
+                        label="คำถาม"
+                        type="text"
+                        fullWidth
+                        value={question}
+                        onChange={(e) => setQuestion(e.target.value)}
+                    />
+                    <TextField
+                        margin="dense"
+                        label="คำตอบ"
+                        type="text"
+                        fullWidth
+                        value={answer}
+                        onChange={(e) => setAnswer(e.target.value)}
+                    />
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={handleCloseQuestionDialog} color="primary">
+                        ยกเลิก
+                    </Button>
+                    <Button onClick={handleSaveQuestion} color="primary">
+                        {editingQuestion ? "อัพเดต" : "บันทึก"}
+                    </Button>
+                </DialogActions>
+            </Dialog>
         </Box>
     );
 };

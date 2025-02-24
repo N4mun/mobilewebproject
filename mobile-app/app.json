@@ -13,7 +13,11 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.attawatkammas.mobileapp",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -24,8 +28,11 @@
     "web": {
       "favicon": "./assets/favicon.png"
     },
-    "plugins": [
-      
-    ]
+    "plugins": [],
+    "extra": {
+      "eas": {
+        "projectId": "70df84c7-f155-4553-8d2e-fc3603042d20"
+      }
+    }
   }
 }
