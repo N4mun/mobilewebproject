@@ -119,6 +119,15 @@ const ClassroomPage = () => {
                     >
                         {showTable ? "ซ่อนตารางรายชื่อ" : "แสดงตารางรายชื่อ"}
                     </Button>
+                    <Button
+                        variant="contained"
+                        color="secondary"
+                        sx={{ minWidth: 150 }}
+                        onClick={() => navigate("/checkin", { state: { classroom, cid } })}
+                    >
+                        เช็คชื่อ
+                    </Button>
+
                 </Box>
 
                 {showTable && (
