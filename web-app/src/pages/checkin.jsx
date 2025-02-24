@@ -49,7 +49,7 @@ const CheckinPage = () => {
                 studentList.push({
                     cno: checkin.id,
                     ...doc.data(),
-                    studentId: doc.id,
+                    studentId: doc.id, // This is the UID of the student
                 });
             });
         }
@@ -155,6 +155,7 @@ const CheckinPage = () => {
         }
     };
 
+    // Fixed: Changed student.studentId to student.id to match the data structure
     const handleSaveCheckin = async (cno) => {
         try {
             const studentsRef = collection(db, `classroom/${cid}/checkin/${cno}/students`);
@@ -166,8 +167,8 @@ const CheckinPage = () => {
                 await setDoc(scoreRef, {
                     date: student.date,
                     name: student.name,
-                    uid: student.studentId,
-                    remark: "",
+                    uid: student.id, // Fixed: Use student.id instead of student.studentId
+                    remark: student.remark || "",
                     score: 0,
                     status: 1,
                 }, { merge: true });
@@ -175,7 +176,7 @@ const CheckinPage = () => {
             alert("บันทึกการเช็คชื่อสำเร็จ");
         } catch (error) {
             console.error("Error saving check-in:", error);
-            alert("เกิดข้อผิดพลาดในการบันทึก");
+            alert("เกิดข้อผิดพลาดในการบันทึก: " + error.message);
         }
     };
 
@@ -304,7 +305,7 @@ const CheckinPage = () => {
                     <Typography variant="h6" sx={{ mb: 2 }}>เพิ่มการเช็คชื่อ</Typography>
                     <TextField fullWidth label="ลำดับการเช็คชื่อ (cno)" variant="outlined" value={cno} onChange={(e) => setCno(e.target.value)} sx={{ mb: 2 }} />
                     <TextField fullWidth label="รหัสเช็คชื่อ" variant="outlined" value={code} onChange={(e) => setCode(e.target.value)} sx={{ mb: 2 }} />
-                    <TextField fullWidth type="datetime-local" variant="outlined" value={date} onChange={(e) => setDate(e.target.value)} sx={{ mb: 2 }} />
+                    <TextField fullWidth label="วันที่และเวลา" type="datetime-local" variant="outlined" value={date} onChange={(e) => setDate(e.target.value)} sx={{ mb: 2 }} />
                     <Button fullWidth variant="contained" color="primary" onClick={handleAddCheckin}>บันทึก</Button>
                 </Box>
             </Modal>
