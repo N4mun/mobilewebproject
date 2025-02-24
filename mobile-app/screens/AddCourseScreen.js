@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, Button, TextInput, StyleSheet, Alert } from 'react-native';
+import { View, Text, TextInput, StyleSheet, Alert, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { db, auth } from '../firebaseConfig';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
+import { Ionicons } from '@expo/vector-icons'; // ใช้ไอคอนจาก Expo
 
 const AddCourseScreen = ({ navigation, route }) => {
     const [cid, setCid] = useState('');
@@ -43,7 +44,7 @@ const AddCourseScreen = ({ navigation, route }) => {
             await setDoc(userRef, { status: 2 });
 
             Alert.alert('Success', 'ลงทะเบียนเข้าห้องเรียนสำเร็จ!');
-            navigation.navigate('AddCourse')
+            navigation.navigate('AddCourse');
         } catch (error) {
             Alert.alert('Error', 'ไม่สามารถลงทะเบียนได้: ' + error.message);
         } finally {
@@ -54,12 +55,14 @@ const AddCourseScreen = ({ navigation, route }) => {
     return (
         <View style={styles.container}>
             <Text style={styles.title}>เพิ่มวิชา</Text>
+
             <TextInput
                 style={styles.input}
                 placeholder="รหัสวิชา (CID)"
                 value={cid}
                 onChangeText={setCid}
                 editable={!loading}
+                placeholderTextColor="#999"
             />
             <TextInput
                 style={styles.input}
@@ -67,6 +70,7 @@ const AddCourseScreen = ({ navigation, route }) => {
                 value={stdid}
                 onChangeText={setStdid}
                 editable={!loading}
+                placeholderTextColor="#999"
             />
             <TextInput
                 style={styles.input}
@@ -74,32 +78,96 @@ const AddCourseScreen = ({ navigation, route }) => {
                 value={name}
                 onChangeText={setName}
                 editable={!loading}
+                placeholderTextColor="#999"
             />
 
-            <Button
-                title="สแกน QR Code"
+            <TouchableOpacity
+                style={[styles.button, styles.scanButton]}
                 onPress={() => navigation.navigate('QRScannerScreen')}
                 disabled={loading}
-            />
-            <Button
-                title="ลงทะเบียน"
+            >
+                <Ionicons name="qr-code" size={24} color="#fff" />
+                <Text style={styles.buttonText}>สแกน QR Code</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+                style={[styles.button, styles.registerButton]}
                 onPress={handleRegister}
                 disabled={loading}
-            />
-            <Button
-                title="ย้อนกลับ"
+            >
+                {loading ? (
+                    <ActivityIndicator color="#fff" />
+                ) : (
+                    <Text style={styles.buttonText}>ลงทะเบียน</Text>
+                )}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+                style={[styles.button, styles.backButton]}
                 onPress={() => navigation.navigate('Home')}
                 disabled={loading}
-            />
-            {loading && <Text>กำลังดำเนินการ...</Text>}
+            >
+                <Ionicons name="arrow-back" size={24} color="#fff" />
+                <Text style={styles.buttonText}>ย้อนกลับ</Text>
+            </TouchableOpacity>
         </View>
     );
 };
 
 const styles = StyleSheet.create({
-    container: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 16, backgroundColor: '#fff' },
-    title: { fontSize: 24, marginBottom: 16 },
-    input: { width: '80%', padding: 10, borderWidth: 1, borderColor: '#ccc', marginBottom: 10, borderRadius: 5 },
+    container: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 16,
+        backgroundColor: '#f5f5f5',
+    },
+    title: {
+        fontSize: 24,
+        fontWeight: 'bold',
+        marginBottom: 20,
+        color: '#333',
+    },
+    input: {
+        width: '80%',
+        padding: 12,
+        borderWidth: 1,
+        borderColor: '#ccc',
+        marginBottom: 15,
+        borderRadius: 8,
+        backgroundColor: '#fff',
+        fontSize: 16,
+    },
+    button: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 12,
+        paddingHorizontal: 24,
+        borderRadius: 8,
+        marginBottom: 16,
+        width: '80%',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.3,
+        shadowRadius: 4,
+        elevation: 5,
+    },
+    scanButton: {
+        backgroundColor: '#3498db',
+    },
+    registerButton: {
+        backgroundColor: '#27ae60',
+    },
+    backButton: {
+        backgroundColor: '#e74c3c',
+    },
+    buttonText: {
+        color: '#fff',
+        fontSize: 18,
+        fontWeight: '600',
+        marginLeft: 10,
+    },
 });
 
 export default AddCourseScreen;
