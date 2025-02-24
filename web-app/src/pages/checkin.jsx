@@ -305,7 +305,7 @@ const CheckinPage = () => {
                     <Typography variant="h6" sx={{ mb: 2 }}>เพิ่มการเช็คชื่อ</Typography>
                     <TextField fullWidth label="ลำดับการเช็คชื่อ (cno)" variant="outlined" value={cno} onChange={(e) => setCno(e.target.value)} sx={{ mb: 2 }} />
                     <TextField fullWidth label="รหัสเช็คชื่อ" variant="outlined" value={code} onChange={(e) => setCode(e.target.value)} sx={{ mb: 2 }} />
-                    <TextField fullWidth label="วันที่และเวลา" type="datetime-local" variant="outlined" value={date} onChange={(e) => setDate(e.target.value)} sx={{ mb: 2 }} />
+                    <TextField fullWidth type="datetime-local" variant="outlined" value={date} onChange={(e) => setDate(e.target.value)} sx={{ mb: 2 }} />
                     <Button fullWidth variant="contained" color="primary" onClick={handleAddCheckin}>บันทึก</Button>
                 </Box>
             </Modal>
