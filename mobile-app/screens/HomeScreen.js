@@ -12,7 +12,6 @@ const HomeScreen = ({ navigation, user }) => {
 
     return (
         <View style={styles.container}>
-
             <Text style={styles.title}>Welcome, {user?.email}</Text>
             
             <TouchableOpacity
