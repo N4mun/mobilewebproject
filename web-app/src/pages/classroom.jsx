@@ -4,7 +4,7 @@ import { db } from "../firebase";
 import { doc, getDoc, collection, addDoc, getDocs, updateDoc, deleteDoc } from "firebase/firestore";
 import { QRCodeCanvas } from "qrcode.react";
 import { AppBar, Toolbar, Typography, Button, Card, CardContent, CardMedia, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Box, TextField, Dialog, DialogTitle, DialogContent, DialogActions, List, ListItem, ListItemText, Divider, IconButton } from "@mui/material";
-import { Delete, Edit } from "@mui/icons-material";
+import { Delete, Edit, Save } from "@mui/icons-material";
 
 const ClassroomPage = () => {
     const { cid } = useParams();
@@ -19,7 +19,9 @@ const ClassroomPage = () => {
     const [question, setQuestion] = useState("");
     const [answer, setAnswer] = useState("");
     const [questions, setQuestions] = useState([]);
-    const [editingQuestion, setEditingQuestion] = useState(null); // State สำหรับเก็บคำถามที่กำลังแก้ไข
+    const [editingQuestion, setEditingQuestion] = useState(null);
+    const [scores, setScores] = useState([]); // State สำหรับเก็บข้อมูลคะแนน
+    const [showScoresTable, setShowScoresTable] = useState(false); // State สำหรับแสดงตารางคะแนน
 
     useEffect(() => {
         const fetchData = async () => {
@@ -44,6 +46,17 @@ const ClassroomPage = () => {
                 const questionsRef = collection(db, `classroom/${cid}/questions`);
                 const questionsSnap = await getDocs(questionsRef);
                 setQuestions(questionsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+
+                // ดึงข้อมูลคะแนน
+                const scoresRef = collection(db, `classroom/${cid}/checkin`);
+                const scoresSnap = await getDocs(scoresRef);
+                const scoresData = [];
+                for (const checkinDoc of scoresSnap.docs) {
+                    const scoresCollectionRef = collection(db, `classroom/${cid}/checkin/${checkinDoc.id}/scores`);
+                    const scoresCollectionSnap = await getDocs(scoresCollectionRef);
+                    scoresData.push(...scoresCollectionSnap.docs.map(doc => ({ id: doc.id, checkinId: checkinDoc.id, ...doc.data() })));
+                }
+                setScores(scoresData);
             } catch (error) {
                 console.error("Error fetching data:", error);
             } finally {
@@ -80,7 +93,7 @@ const ClassroomPage = () => {
         setOpenQuestionDialog(false);
         setQuestion("");
         setAnswer("");
-        setEditingQuestion(null); // รีเซ็ตการแก้ไข
+        setEditingQuestion(null);
     };
 
     const handleSaveQuestion = async () => {
@@ -92,12 +105,10 @@ const ClassroomPage = () => {
                 timestamp: new Date()
             };
             if (editingQuestion) {
-                // แก้ไขคำถามที่มีอยู่
                 const questionRef = doc(db, `classroom/${cid}/questions`, editingQuestion.id);
                 await updateDoc(questionRef, newQuestion);
                 setQuestions(questions.map(q => q.id === editingQuestion.id ? { ...q, ...newQuestion } : q));
             } else {
-                // เพิ่มคำถามใหม่
                 const docRef = await addDoc(questionsRef, newQuestion);
                 setQuestions([...questions, { id: docRef.id, ...newQuestion }]);
             }
@@ -121,6 +132,29 @@ const ClassroomPage = () => {
         setAnswer(question.answer);
         setEditingQuestion(question);
         setOpenQuestionDialog(true);
+    };
+
+    const handleScoreChange = (id, field, value) => {
+        setScores(scores.map(score => 
+            score.id === id ? { ...score, [field]: value } : score
+        ));
+    };
+
+    const handleSaveScores = async () => {
+        try {
+            for (const score of scores) {
+                const scoreRef = doc(db, `classroom/${cid}/checkin/${score.checkinId}/scores`, score.id);
+                await updateDoc(scoreRef, {
+                    score: score.score,
+                    note: score.note,
+                    status: score.status
+                });
+            }
+            alert("บันทึกข้อมูลสำเร็จ");
+        } catch (error) {
+            console.error("Error saving scores:", error);
+            alert("เกิดข้อผิดพลาดในการบันทึกข้อมูล");
+        }
     };
 
     if (loading) return <Typography>Loading...</Typography>;
@@ -189,6 +223,14 @@ const ClassroomPage = () => {
                     >
                         เพิ่มคำถาม
                     </Button>
+                    <Button
+                        variant="contained"
+                        color="info"
+                        onClick={() => setShowScoresTable(!showScoresTable)}
+                        sx={{ minWidth: 150 }}
+                    >
+                        {showScoresTable ? "ซ่อนคะแนน" : "แสดงคะแนน"}
+                    </Button>
                 </Box>
 
                 {showTable && (
@@ -227,6 +269,68 @@ const ClassroomPage = () => {
                                 </TableBody>
                             </Table>
                         </TableContainer>
+                    </Box>
+                )}
+
+                {showScoresTable && (
+                    <Box sx={{ mt: 4 }}>
+                        <Typography variant="h5">คะแนนการเช็คชื่อ</Typography>
+                        <TableContainer component={Paper} sx={{ mt: 2 }}>
+                            <Table>
+                                <TableHead>
+                                    <TableRow>
+                                        <TableCell>ลำดับ</TableCell>
+                                        <TableCell>รหัส</TableCell>
+                                        <TableCell>ชื่อ</TableCell>
+                                        <TableCell>หมายเหตุ</TableCell>
+                                        <TableCell>วันเวลา</TableCell>
+                                        <TableCell>คะแนน</TableCell>
+                                        <TableCell>สถานะ</TableCell>
+                                    </TableRow>
+                                </TableHead>
+                                <TableBody>
+                                    {scores.map((score, index) => (
+                                        <TableRow key={score.id}>
+                                            <TableCell>{index + 1}</TableCell>
+                                            <TableCell>{score.stdid}</TableCell>
+                                            <TableCell>{score.name}</TableCell>
+                                            <TableCell>
+                                                <TextField
+                                                    value={score.note || ""}
+                                                    onChange={(e) => handleScoreChange(score.id, "note", e.target.value)}
+                                                    size="small"
+                                                />
+                                            </TableCell>
+                                            <TableCell>{new Date(score.timestamp?.toDate()).toLocaleString()}</TableCell>
+                                            <TableCell>
+                                                <TextField
+                                                    value={score.score || ""}
+                                                    onChange={(e) => handleScoreChange(score.id, "score", e.target.value)}
+                                                    size="small"
+                                                    type="number"
+                                                />
+                                            </TableCell>
+                                            <TableCell>
+                                                <TextField
+                                                    value={score.status || ""}
+                                                    onChange={(e) => handleScoreChange(score.id, "status", e.target.value)}
+                                                    size="small"
+                                                />
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </TableContainer>
+                        <Button
+                            variant="contained"
+                            color="primary"
+                            onClick={handleSaveScores}
+                            sx={{ mt: 2 }}
+                            startIcon={<Save />}
+                        >
+                            บันทึกข้อมูล
+                        </Button>
                     </Box>
                 )}
 
