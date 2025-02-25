@@ -3,46 +3,57 @@ import { View, Text, StyleSheet, TouchableOpacity, FlatList, Alert } from 'react
 import { signOut } from '@firebase/auth';
 import { auth, db } from '../firebaseConfig';
 import { Ionicons } from '@expo/vector-icons';
-import { collection, getDocs, doc, getDoc } from 'firebase/firestore';
+import { collection, onSnapshot, doc, getDoc } from 'firebase/firestore';
 
 const HomeScreen = ({ navigation, user }) => {
     const [courses, setCourses] = useState([]);
 
     useEffect(() => {
-        const fetchCoursesAndCheckins = async () => {
-            if (!user) return;
+        if (!user) return;
+
+        const fetchCoursesAndCheckins = () => {
             const userCoursesRef = collection(db, `users/${user.uid}/classroom`);
-            const querySnapshot = await getDocs(userCoursesRef);
-            const courseList = [];
 
-            for (const docSnapshot of querySnapshot.docs) {
-                const cid = docSnapshot.id;
-                const studentRef = doc(db, `classroom/${cid}/students/${user.uid}`);
-                const studentSnap = await getDoc(studentRef);
+            // ใช้ onSnapshot เพื่อฟังการเปลี่ยนแปลงแบบ real-time
+            const unsubscribe = onSnapshot(userCoursesRef, async (querySnapshot) => {
+                const courseList = [];
 
-                if (studentSnap.exists() && studentSnap.data().status === 1) {
-                    const classroomRef = doc(db, `classroom/${cid}`);
-                    const classroomSnap = await getDoc(classroomRef);
-                    const classroomData = classroomSnap.exists() ? classroomSnap.data() : {};
+                for (const docSnapshot of querySnapshot.docs) {
+                    const cid = docSnapshot.id;
+                    const studentRef = doc(db, `classroom/${cid}/students/${user.uid}`);
+                    const studentSnap = await getDoc(studentRef);
 
-                    const checkinRef = collection(db, `classroom/${cid}/checkin`);
-                    const checkinSnap = await getDocs(checkinRef);
-                    const activeCheckins = checkinSnap.docs
-                        .map(doc => ({ id: doc.id, ...doc.data() }))
-                        .filter(checkin => checkin.status === 1);
+                    if (studentSnap.exists() && studentSnap.data().status === 1) {
+                        const classroomRef = doc(db, `classroom/${cid}`);
+                        const classroomSnap = await getDoc(classroomRef);
+                        const classroomData = classroomSnap.exists() ? classroomSnap.data() : {};
 
-                    courseList.push({
-                        cid,
-                        code: classroomData.code || 'N/A',
-                        subject: classroomData.subject || 'N/A',
-                        name: classroomData.name || 'N/A',
-                        activeCheckins,
-                    });
+                        const checkinRef = collection(db, `classroom/${cid}/checkin`);
+                        const checkinSnap = await getDocs(checkinRef);
+                        const activeCheckins = checkinSnap.docs
+                            .map(doc => ({ id: doc.id, ...doc.data() }))
+                            .filter(checkin => checkin.status === 1);
+
+                        courseList.push({
+                            cid,
+                            code: classroomData.code || 'N/A',
+                            subject: classroomData.subject || 'N/A',
+                            name: classroomData.name || 'N/A',
+                            activeCheckins,
+                        });
+                    }
                 }
-            }
-            setCourses(courseList);
+                setCourses(courseList);
+            }, (error) => {
+                console.error("Error fetching courses:", error);
+            });
+
+            // คืนฟังก์ชัน unsubscribe เพื่อหยุดการฟังเมื่อ component unmount
+            return () => unsubscribe();
         };
-        fetchCoursesAndCheckins();
+
+        const unsubscribe = fetchCoursesAndCheckins();
+        return () => unsubscribe && unsubscribe();
     }, [user]);
 
     const handleLogout = async () => {

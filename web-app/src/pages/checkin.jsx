@@ -300,7 +300,7 @@ const CheckinPage = () => {
                 </Box>
             </Box>
 
-            <Modal open={openModal} onClose={() => setOpenModal(false)}>
+            <Modal open={openModal} onClose={() => setOpenModal(false)}> 
                 <Box sx={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)", bgcolor: "background.paper", p: 4, boxShadow: 24, borderRadius: 2, width: 400 }}>
                     <Typography variant="h6" sx={{ mb: 2 }}>เพิ่มการเช็คชื่อ</Typography>
                     <TextField fullWidth label="ลำดับการเช็คชื่อ (cno)" variant="outlined" value={cno} onChange={(e) => setCno(e.target.value)} sx={{ mb: 2 }} />

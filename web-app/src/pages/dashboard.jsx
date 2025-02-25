@@ -46,18 +46,18 @@ const Dashboard = () => {
         fetchUserClasses();
     }, [user]);
 
-    // ฟังก์ชันเปิด Dialog ยืนยันการลบ
     const confirmDelete = (classData) => {
         setSelectedClass(classData);
         setOpenDialog(true);
     };
 
-    // ฟังก์ชันลบห้องเรียน
     const handleDeleteClass = async () => {
         if (!selectedClass) return;
 
         try {
+            const user = auth.currentUser;
             await deleteDoc(doc(db, "classroom", selectedClass.id));
+            await deleteDoc(doc(db, "users", user.uid, "classroom", selectedClass.id));
             setClasses(classes.filter((c) => c.id !== selectedClass.id));
         } catch (error) {
             console.error("Error deleting class:", error);
@@ -69,7 +69,6 @@ const Dashboard = () => {
 
     return (
         <Box>
-
             <AppBar position="static">
                 <Toolbar>
                     <Typography variant="h6" sx={{ flexGrow: 1 }}>
@@ -80,15 +79,11 @@ const Dashboard = () => {
             </AppBar>
 
             <Box sx={{ textAlign: "center", mt: 3, px: 2 }}>
-
-                {/* ข้อมูลผู้ใช้ */}
                 <Typography variant="h4" gutterBottom>ข้อมูลผู้ใช้</Typography>
-
                 <Card sx={{ maxWidth: 400, mx: "auto", p: 3, textAlign: "center", boxShadow: 3 }}>
                     <Avatar src={userData.photo} sx={{ width: 80, height: 80, mx: "auto", mb: 2 }} />
                     <Typography variant="h6">{userData.name}</Typography>
                     <Typography color="textSecondary">{userData.email}</Typography>
-
                     <Box sx={{ display: "flex", justifyContent: "center", gap: 2, mt: 2 }}>
                         <Button variant="outlined" color="primary" onClick={() => navigate("/edit-profile")}>
                             แก้ไขข้อมูลส่วนตัว
@@ -99,9 +94,7 @@ const Dashboard = () => {
                     </Box>
                 </Card>
 
-                {/* ห้องเรียน */}
                 <Typography variant="h4" sx={{ mt: 5 }}>ห้องเรียนของฉัน</Typography>
-
                 <Button variant="contained" color="primary" onClick={() => navigate("/add-class")} sx={{ mt: 2, mb: 3 }}>
                     เพิ่มห้องเรียน
                 </Button>
@@ -137,7 +130,6 @@ const Dashboard = () => {
                         </Grid>
                     ))}
                 </Grid>
-
 
                 <Dialog open={openDialog} onClose={() => setOpenDialog(false)}>
                     <DialogTitle>ยืนยันการลบ</DialogTitle>
