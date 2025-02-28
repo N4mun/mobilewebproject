@@ -14,6 +14,7 @@ const ClassroomPage = () => {
     const [loading, setLoading] = useState(true);
     const [showTable, setShowTable] = useState(false);
     const [showQRCode, setShowQRCode] = useState(false);
+    const [showCheckinHistory, setShowCheckinHistory] = useState(false);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -32,7 +33,19 @@ const ClassroomPage = () => {
 
                 const checkinRef = collection(db, `classroom/${cid}/checkin`);
                 const checkinSnap = await getDocs(checkinRef);
-                setCheckins(checkinSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+                const checkinList = await Promise.all(
+                    checkinSnap.docs.map(async (doc) => {
+                        const checkinData = { id: doc.id, ...doc.data() };
+                        // ดึงจำนวนนักเรียนที่เช็คชื่อในแต่ละ checkin
+                        const studentsCheckinRef = collection(db, `classroom/${cid}/checkin/${doc.id}/students`);
+                        const studentsCheckinSnap = await getDocs(studentsCheckinRef);
+                        return {
+                            ...checkinData,
+                            studentCount: studentsCheckinSnap.size, // จำนวนนักเรียนที่เช็คชื่อ
+                        };
+                    })
+                );
+                setCheckins(checkinList);
             } catch (error) {
                 console.error("Error fetching data:", error);
             } finally {
@@ -121,13 +134,20 @@ const ClassroomPage = () => {
                     </Button>
                     <Button
                         variant="contained"
+                        color="info"
+                        onClick={() => setShowCheckinHistory(!showCheckinHistory)}
+                        sx={{ minWidth: 150 }}
+                    >
+                        {showCheckinHistory ? "ซ่อนประวัติการเช็คชื่อ" : "ดูประวัติการเช็คชื่อ"}
+                    </Button>
+                    <Button
+                        variant="contained"
                         color="secondary"
                         sx={{ minWidth: 150 }}
                         onClick={() => navigate("/checkin", { state: { classroom, cid } })}
                     >
                         เช็คชื่อ
                     </Button>
-
                 </Box>
 
                 {showTable && (
@@ -160,6 +180,36 @@ const ClassroomPage = () => {
                                                 <Button variant="contained" color="error" sx={{ ml: 1 }} onClick={() => handleRemoveStudent(student.id)}>
                                                     ลบ
                                                 </Button>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </TableContainer>
+                    </Box>
+                )}
+
+                {showCheckinHistory && (
+                    <Box>
+                        <Typography variant="h5" sx={{ mt: 4 }}>ประวัติการเช็คชื่อ</Typography>
+                        <TableContainer component={Paper} sx={{ mt: 2 }}>
+                            <Table>
+                                <TableHead>
+                                    <TableRow>
+                                        <TableCell>ลำดับ</TableCell>
+                                        <TableCell>วันที่-เวลา</TableCell>
+                                        <TableCell>จำนวนคนเข้าเรียน</TableCell> {/* เพิ่มคอลัมน์ */}
+                                        <TableCell>สถานะ</TableCell>
+                                    </TableRow>
+                                </TableHead>
+                                <TableBody>
+                                    {checkins.map((checkin) => (
+                                        <TableRow key={checkin.id}>
+                                            <TableCell>{checkin.id}</TableCell>
+                                            <TableCell>{checkin.date}</TableCell>
+                                            <TableCell>{checkin.studentCount}</TableCell> {/* แสดงจำนวน */}
+                                            <TableCell>
+                                                {checkin.status === 0 ? "ยังไม่เริ่ม" : checkin.status === 1 ? "กำลังดำเนินการ" : "เสร็จสิ้น"}
                                             </TableCell>
                                         </TableRow>
                                     ))}

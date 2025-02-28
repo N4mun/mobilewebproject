@@ -11,9 +11,9 @@ const AttendanceScreen = () => {
     const route = useRoute();
     const { cid, cno } = route.params || {};
     const [course, setCourse] = useState({ code: '', name: '' });
-    const [remark, setRemark] = useState('');
     const [checkinModalVisible, setCheckinModalVisible] = useState(false);
     const [checkinCode, setCheckinCode] = useState('');
+    const [remark, setRemark] = useState(''); // ยังคงใช้ state เดิม แต่ย้าย UI ไปใน Modal
     const [answerText, setAnswerText] = useState('');
     const [questionShow, setQuestionShow] = useState(false);
     const [questionNo, setQuestionNo] = useState('');
@@ -83,37 +83,15 @@ const AttendanceScreen = () => {
                 stdid,
                 name,
                 date: new Date().toISOString(),
-                remark: remark || '',
+                remark: remark || '', // บันทึกหมายเหตุพร้อมการเช็คชื่อ
             });
 
             Alert.alert('Success', 'เช็คชื่อเข้าเรียนสำเร็จ!');
             setCheckinModalVisible(false);
             setCheckinCode('');
+            setRemark(''); // ล้างหมายเหตุหลังบันทึก
         } catch (error) {
             console.error("Error checking in:", error);
-            Alert.alert('Error', 'เกิดข้อผิดพลาด: ' + error.message);
-        }
-    };
-
-    const handleSaveRemark = async () => {
-        try {
-            const user = auth.currentUser;
-            if (!user) {
-                Alert.alert('Error', 'กรุณาเข้าสู่ระบบ');
-                return;
-            }
-
-            const studentRef = doc(db, `classroom/${cid}/checkin/${cno}/students/${user.uid}`);
-            const studentSnap = await getDoc(studentRef);
-            if (!studentSnap.exists()) {
-                Alert.alert('Error', 'กรุณาเช็คชื่อก่อนบันทึกหมายเหตุ');
-                return;
-            }
-
-            await updateDoc(studentRef, { remark });
-            Alert.alert('Success', 'บันทึกหมายเหตุสำเร็จ');
-        } catch (error) {
-            console.error("Error saving remark:", error);
             Alert.alert('Error', 'เกิดข้อผิดพลาด: ' + error.message);
         }
     };
@@ -175,17 +153,6 @@ const AttendanceScreen = () => {
                 <Text style={styles.buttonText}>เช็คชื่อ</Text>
             </TouchableOpacity>
 
-            <TextInput
-                style={styles.input}
-                placeholder="หมายเหตุ"
-                value={remark}
-                onChangeText={setRemark}
-                placeholderTextColor="#999"
-            />
-            <TouchableOpacity style={styles.saveButton} onPress={handleSaveRemark}>
-                <Text style={styles.buttonText}>บันทึก</Text>
-            </TouchableOpacity>
-
             <TouchableOpacity style={styles.backButton} onPress={handleBackToHome}>
                 <Ionicons name="arrow-back" size={24} color="#fff" />
                 <Text style={styles.buttonText}>กลับหน้าหลัก</Text>
@@ -216,6 +183,13 @@ const AttendanceScreen = () => {
                             placeholder="รหัสเช็คชื่อ"
                             value={checkinCode}
                             onChangeText={setCheckinCode}
+                            placeholderTextColor="#999"
+                        />
+                        <TextInput
+                            style={styles.input}
+                            placeholder="หมายเหตุ (ถ้ามี)"
+                            value={remark}
+                            onChangeText={setRemark}
                             placeholderTextColor="#999"
                         />
                         <TouchableOpacity style={styles.modalButton} onPress={handleCheckin}>
@@ -270,19 +244,6 @@ const styles = StyleSheet.create({
         borderRadius: 8,
         alignItems: 'center',
         justifyContent: 'center',
-        marginBottom: 20,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.3,
-        shadowRadius: 4,
-        elevation: 5,
-    },
-    saveButton: {
-        backgroundColor: '#3498db',
-        paddingVertical: 12,
-        paddingHorizontal: 24,
-        borderRadius: 8,
-        alignItems: 'center',
         marginBottom: 20,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },

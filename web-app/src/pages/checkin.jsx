@@ -2,8 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { AppBar, Toolbar, Box, Typography, Card, CardMedia, CardContent, Button, Modal, TextField, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper } from "@mui/material";
 import { db } from "../firebase";
-import { doc, setDoc, collection, getDocs, updateDoc, deleteDoc, onSnapshot } from "firebase/firestore";
-import { QRCodeCanvas } from "qrcode.react";
+import { doc, setDoc, collection, getDocs, updateDoc, deleteDoc, onSnapshot, getDoc } from "firebase/firestore";
 
 const CheckinPage = () => {
     const location = useLocation();
@@ -69,6 +68,7 @@ const CheckinPage = () => {
                 });
             });
         }
+        console.log("Fetched scores:", allScores);
         setScores(allScores);
         setEditedScores({});
     };
@@ -167,7 +167,7 @@ const CheckinPage = () => {
                 await setDoc(scoreRef, {
                     date: student.date,
                     name: student.name,
-                    uid: student.id, // Fixed: Use student.id instead of student.studentId
+                    uid: student.id, 
                     remark: student.remark || "",
                     score: 0,
                     status: 1,
@@ -181,28 +181,59 @@ const CheckinPage = () => {
     };
 
     const handleScoreChange = (cno, stdid, field, value) => {
+        let formattedValue = value;
+        if (field === "score") {
+            formattedValue = value === "" ? 0 : Number(value); // แปลงเป็น number และจัดการกรณีค่าว่าง
+        } else if (field === "status") {
+            formattedValue = Number(value); // แปลงสถานะเป็น number
+        }
         setEditedScores(prev => ({
             ...prev,
             [`${cno}-${stdid}`]: {
                 ...prev[`${cno}-${stdid}`],
-                [field]: value,
+                [field]: formattedValue,
             },
         }));
     };
 
     const handleSaveScores = async () => {
         try {
+            console.log("Saving scores:", editedScores);
             for (const key in editedScores) {
-                const [cno, stdid] = key.split('-');
+                // แยก cno และ stdid โดยตัดเฉพาะส่วนแรก (cno) ออกมา
+                const firstDashIndex = key.indexOf('-');
+                const cno = key.substring(0, firstDashIndex);
+                const stdid = key.substring(firstDashIndex + 1); // เก็บค่าเต็มของ stdid รวม "-4"
+    
                 const scoreRef = doc(db, `classroom/${cid}/checkin/${cno}/scores/${stdid}`);
-                await updateDoc(scoreRef, editedScores[key]);
+    
+                const scoreSnap = await getDoc(scoreRef);
+                let updatedData;
+    
+                if (scoreSnap.exists()) {
+                    const originalData = scoreSnap.data();
+                    updatedData = { ...originalData, ...editedScores[key] };
+                    await updateDoc(scoreRef, updatedData);
+                } else {
+                    updatedData = {
+                        date: new Date().toISOString(),
+                        name: "Unknown",
+                        uid: stdid,
+                        remark: editedScores[key].remark || "",
+                        score: editedScores[key].score || 0,
+                        status: editedScores[key].status || 0,
+                    };
+                    await setDoc(scoreRef, updatedData);
+                }
+    
+                console.log(`Saved ${key}:`, updatedData);
             }
             alert("บันทึกคะแนนสำเร็จ");
             setShowScores(false);
             fetchScores();
         } catch (error) {
-            console.error("Error saving scores:", error);
-            alert("เกิดข้อผิดพลาดในการบันทึกคะแนน");
+            console.error("Error saving scores:", error.message);
+            alert(`เกิดข้อผิดพลาดในการบันทึกคะแนน: ${error.message}`);
         }
     };
 
@@ -219,6 +250,14 @@ const CheckinPage = () => {
                 question_text: questionText,
                 question_show: true,
             });
+
+            // อัปเดต state ทันทีหลังจากตั้งคำถามสำเร็จ
+            setCheckins(checkins.map(item =>
+                item.id === selectedCno
+                    ? { ...item, question_show: true }
+                    : item
+            ));
+
             alert("เริ่มถามสำเร็จ");
             setOpenQuestionModal(false);
         } catch (error) {
@@ -231,6 +270,14 @@ const CheckinPage = () => {
         try {
             const checkinRef = doc(db, `classroom/${cid}/checkin/${cno}`);
             await updateDoc(checkinRef, { question_show: false });
+
+            // อัปเดต state ทันทีหลังจากปิดคำถาม
+            setCheckins(checkins.map(item =>
+                item.id === cno
+                    ? { ...item, question_show: false }
+                    : item
+            ));
+
             setAnswers([]);
             alert("ปิดคำถามสำเร็จ");
         } catch (error) {
@@ -300,7 +347,7 @@ const CheckinPage = () => {
                 </Box>
             </Box>
 
-            <Modal open={openModal} onClose={() => setOpenModal(false)}> 
+            <Modal open={openModal} onClose={() => setOpenModal(false)}>
                 <Box sx={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)", bgcolor: "background.paper", p: 4, boxShadow: 24, borderRadius: 2, width: 400 }}>
                     <Typography variant="h6" sx={{ mb: 2 }}>เพิ่มการเช็คชื่อ</Typography>
                     <TextField fullWidth label="ลำดับการเช็คชื่อ (cno)" variant="outlined" value={cno} onChange={(e) => setCno(e.target.value)} sx={{ mb: 2 }} />
@@ -373,17 +420,16 @@ const CheckinPage = () => {
                                                         variant="outlined"
                                                         onClick={() => {
                                                             setSelectedCno(item.id);
-                                                            setOpenQuestionModal(true);
+                                                            if (item.question_show) {
+                                                                handleCloseQuestion(item.id); // ถ้ากำลังแสดงคำถามอยู่ ให้ปิด
+                                                            } else {
+                                                                setOpenQuestionModal(true); // ถ้ายังไม่แสดงคำถาม ให้เปิด modal
+                                                            }
                                                         }}
                                                         sx={{ mr: 1 }}
                                                     >
-                                                        ตั้งคำถาม
+                                                        {item.question_show ? "ปิดคำถาม" : "ตั้งคำถาม"}
                                                     </Button>
-                                                    {item.question_show && (
-                                                        <Button variant="outlined" color="error" onClick={() => handleCloseQuestion(item.id)} sx={{ mr: 1 }}>
-                                                            ปิดคำถาม
-                                                        </Button>
-                                                    )}
                                                 </>
                                             )}
                                             <Button variant="outlined" onClick={() => toggleShowCode(item.id)} sx={{ mr: 1 }}>
@@ -471,7 +517,7 @@ const CheckinPage = () => {
                                                     <TableCell>{score.name}</TableCell>
                                                     <TableCell>
                                                         <TextField
-                                                            value={editedScores[`${score.cno}-${score.stdid}`]?.remark ?? score.remark}
+                                                            value={editedScores[`${score.cno}-${score.stdid}`]?.remark ?? score.remark ?? ""}
                                                             onChange={(e) => handleScoreChange(score.cno, score.stdid, "remark", e.target.value)}
                                                             size="small"
                                                         />
@@ -480,7 +526,7 @@ const CheckinPage = () => {
                                                     <TableCell>
                                                         <TextField
                                                             type="number"
-                                                            value={editedScores[`${score.cno}-${score.stdid}`]?.score ?? score.score}
+                                                            value={editedScores[`${score.cno}-${score.stdid}`]?.score ?? score.score ?? 0}
                                                             onChange={(e) => handleScoreChange(score.cno, score.stdid, "score", e.target.value)}
                                                             size="small"
                                                         />
@@ -488,8 +534,8 @@ const CheckinPage = () => {
                                                     <TableCell>
                                                         <TextField
                                                             select
-                                                            value={editedScores[`${score.cno}-${score.stdid}`]?.status ?? score.status}
-                                                            onChange={(e) => handleScoreChange(score.cno, score.stdid, "status", Number(e.target.value))}
+                                                            value={editedScores[`${score.cno}-${score.stdid}`]?.status ?? score.status ?? 0}
+                                                            onChange={(e) => handleScoreChange(score.cno, score.stdid, "status", e.target.value)}
                                                             SelectProps={{ native: true }}
                                                             size="small"
                                                         >
