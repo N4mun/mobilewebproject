@@ -14,23 +14,31 @@ const Stack = createNativeStackNavigator();
 
 const App = () => {
     const [user, setUser] = useState(null);
+    const [initialRoute, setInitialRoute] = useState('Auth'); // ตั้งค่าเริ่มต้นเป็น Auth
+    const [initialParams, setInitialParams] = useState(null); // เก็บ params สำหรับ Attendance
+    const navigationRef = React.useRef(null);
 
     useEffect(() => {
-        const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+        const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
             setUser(currentUser);
             if (currentUser) {
-                // Check AsyncStorage for last attendance data
-                AsyncStorage.getItem('lastAttendance')
-                    .then((value) => {
-                        if (value) {
-                            const { cid, cno } = JSON.parse(value);
-                            // Navigate to AttendanceScreen with last cid and cno
-                            navigationRef.current?.navigate('Attendance', { cid, cno });
-                        }
-                    })
-                    .catch((error) => {
-                        console.error("Error reading AsyncStorage:", error);
-                    });
+                try {
+                    const value = await AsyncStorage.getItem('lastAttendance');
+                    if (value) {
+                        const { cid, cno } = JSON.parse(value);
+                        setInitialRoute('Attendance'); // เปลี่ยนเส้นทางเริ่มต้นเป็น Attendance
+                        setInitialParams({ cid, cno });
+                    } else {
+                        setInitialRoute('Home'); // ถ้าไม่มี lastAttendance ไป Home
+                        setInitialParams(null);
+                    }
+                } catch (error) {
+                    console.error("Error reading AsyncStorage:", error);
+                    setInitialRoute('Home'); // fallback เป็น Home ถ้ามีข้อผิดพลาด
+                }
+            } else {
+                setInitialRoute('Auth'); // ถ้าไม่มี user ไป Auth
+                setInitialParams(null);
             }
         });
         return () => unsubscribe();
@@ -40,12 +48,9 @@ const App = () => {
         await signOut(auth);
     };
 
-    // Create a ref to access navigation outside useEffect
-    const navigationRef = React.useRef(null);
-
     return (
         <NavigationContainer ref={navigationRef}>
-            <Stack.Navigator>
+            <Stack.Navigator initialRouteName={initialRoute}>
                 {user ? (
                     <>
                         <Stack.Screen name="Home">
@@ -55,7 +60,11 @@ const App = () => {
                             {(props) => <AddCourseScreen {...props} user={user} />}
                         </Stack.Screen>
                         <Stack.Screen name="QRScannerScreen" component={QRScannerScreen} />
-                        <Stack.Screen name="Attendance" component={AttendanceScreen} />
+                        <Stack.Screen 
+                            name="Attendance" 
+                            component={AttendanceScreen}
+                            initialParams={initialParams} // ส่ง params ไปกับ Attendance
+                        />
                     </>
                 ) : (
                     <Stack.Screen name="Auth" component={AuthScreen} />

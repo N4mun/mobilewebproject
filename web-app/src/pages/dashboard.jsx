@@ -53,12 +53,68 @@ const Dashboard = () => {
 
     const handleDeleteClass = async () => {
         if (!selectedClass) return;
-
+    
         try {
             const user = auth.currentUser;
-            await deleteDoc(doc(db, "classroom", selectedClass.id));
-            await deleteDoc(doc(db, "users", user.uid, "classroom", selectedClass.id));
-            setClasses(classes.filter((c) => c.id !== selectedClass.id));
+            const cid = selectedClass.id;
+    
+            // 1. ดึงข้อมูลนักเรียนทั้งหมดในห้องเรียนนี้
+            const studentsRef = collection(db, `classroom/${cid}/students`);
+            const studentsSnap = await getDocs(studentsRef);
+            const studentIds = studentsSnap.docs.map(doc => doc.id);
+    
+            // 2. ลบข้อมูลใน users/{student.uid}/classroom/{cid} ของนักเรียนทุกคน
+            const studentDeletePromises = studentIds.map(studentId =>
+                deleteDoc(doc(db, `users/${studentId}/classroom`, cid))
+            );
+            await Promise.all(studentDeletePromises);
+    
+            // 3. ลบ subcollection students ใน classroom/{cid}
+            const studentDocsDeletePromises = studentIds.map(studentId =>
+                deleteDoc(doc(db, `classroom/${cid}/students`, studentId))
+            );
+            await Promise.all(studentDocsDeletePromises);
+    
+            // 4. ลบ subcollection checkin (รวมถึง subcollection ภายใน เช่น scores, answers)
+            const checkinRef = collection(db, `classroom/${cid}/checkin`);
+            const checkinSnap = await getDocs(checkinRef);
+            for (const checkinDoc of checkinSnap.docs) {
+                const checkinId = checkinDoc.id;
+    
+                // ลบ subcollection scores
+                const scoresRef = collection(db, `classroom/${cid}/checkin/${checkinId}/scores`);
+                const scoresSnap = await getDocs(scoresRef);
+                const scoresDeletePromises = scoresSnap.docs.map(scoreDoc =>
+                    deleteDoc(doc(db, `classroom/${cid}/checkin/${checkinId}/scores`, scoreDoc.id))
+                );
+                await Promise.all(scoresDeletePromises);
+    
+                // ลบ subcollection answers (ถ้ามีคำถาม)
+                const answersRef = collection(db, `classroom/${cid}/checkin/${checkinId}/answers`);
+                const answersSnap = await getDocs(answersRef);
+                for (const answerDoc of answersSnap.docs) {
+                    const answerId = answerDoc.id;
+                    const studentsAnswersRef = collection(db, `classroom/${cid}/checkin/${checkinId}/answers/${answerId}/students`);
+                    const studentsAnswersSnap = await getDocs(studentsAnswersRef);
+                    const studentsAnswersDeletePromises = studentsAnswersSnap.docs.map(studentDoc =>
+                        deleteDoc(doc(db, `classroom/${cid}/checkin/${checkinId}/answers/${answerId}/students`, studentDoc.id))
+                    );
+                    await Promise.all(studentsAnswersDeletePromises);
+                    await deleteDoc(doc(db, `classroom/${cid}/checkin/${checkinId}/answers`, answerId));
+                }
+    
+                // ลบเอกสาร checkin หลัก
+                await deleteDoc(doc(db, `classroom/${cid}/checkin`, checkinId));
+            }
+    
+            // 5. ลบเอกสารหลักใน classroom/{cid}
+            await deleteDoc(doc(db, "classroom", cid));
+    
+            // 6. ลบข้อมูลใน users/{teacher.uid}/classroom/{cid} (ของอาจารย์)
+            await deleteDoc(doc(db, "users", user.uid, "classroom", cid));
+    
+            // อัปเดต UI
+            setClasses(classes.filter((c) => c.id !== cid));
         } catch (error) {
             console.error("Error deleting class:", error);
         } finally {

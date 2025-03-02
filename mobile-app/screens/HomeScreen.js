@@ -3,46 +3,91 @@ import { View, Text, StyleSheet, TouchableOpacity, FlatList, Alert } from 'react
 import { signOut } from '@firebase/auth';
 import { auth, db } from '../firebaseConfig';
 import { Ionicons } from '@expo/vector-icons';
-import { collection, getDocs, doc, getDoc } from 'firebase/firestore';
+import { collection, doc, getDoc, onSnapshot, deleteDoc } from 'firebase/firestore';
 
 const HomeScreen = ({ navigation, user }) => {
     const [courses, setCourses] = useState([]);
 
     useEffect(() => {
-        const fetchCoursesAndCheckins = async () => {
-            if (!user) return;
-            const userCoursesRef = collection(db, `users/${user.uid}/classroom`);
-            const querySnapshot = await getDocs(userCoursesRef);
-            const courseList = [];
+        if (!user) return;
 
-            for (const docSnapshot of querySnapshot.docs) {
+        const userCoursesRef = collection(db, `users/${user.uid}/classroom`);
+        const unsubscribeCourses = onSnapshot(userCoursesRef, (querySnapshot) => {
+            const unsubscribes = []; // เก็บ unsubscribes สำหรับ student และ checkin
+
+            // ดึง cid ทั้งหมดที่ยังอยู่ใน users/${user.uid}/classroom
+            const courseIds = querySnapshot.docs.map(doc => doc.id);
+
+            // ลบ courses ที่ไม่อยู่ใน querySnapshot ออก
+            setCourses(prevCourses => prevCourses.filter(course => courseIds.includes(course.cid)));
+
+            // ฟังข้อมูลสำหรับ cid แต่ละตัว
+            querySnapshot.docs.forEach(docSnapshot => {
                 const cid = docSnapshot.id;
-                const studentRef = doc(db, `classroom/${cid}/students/${user.uid}`);
-                const studentSnap = await getDoc(studentRef);
 
-                if (studentSnap.exists() && studentSnap.data().status === 1) {
-                    const classroomRef = doc(db, `classroom/${cid}`);
-                    const classroomSnap = await getDoc(classroomRef);
-                    const classroomData = classroomSnap.exists() ? classroomSnap.data() : {};
+                const classroomRef = doc(db, `classroom/${cid}`);
+                getDoc(classroomRef).then(classroomSnap => {
+                    if (!classroomSnap.exists()) {
+                        // ถ้า classroom/${cid} ไม่อยู่ ลบออกจาก users/${user.uid}/classroom
+                        deleteDoc(doc(db, `users/${user.uid}/classroom`, cid));
+                        return;
+                    }
+                    const classroomData = classroomSnap.data();
 
-                    const checkinRef = collection(db, `classroom/${cid}/checkin`);
-                    const checkinSnap = await getDocs(checkinRef);
-                    const activeCheckins = checkinSnap.docs
-                        .map(doc => ({ id: doc.id, ...doc.data() }))
-                        .filter(checkin => checkin.status === 1);
+                    const studentRef = doc(db, `classroom/${cid}/students/${user.uid}`);
+                    const unsubscribeStudent = onSnapshot(studentRef, (studentSnap) => {
+                        if (studentSnap.exists() && studentSnap.data().status === 1) {
+                            setCourses(prevCourses => {
+                                const existingCourse = prevCourses.find(course => course.cid === cid);
+                                if (!existingCourse) {
+                                    return [
+                                        ...prevCourses,
+                                        {
+                                            cid,
+                                            code: classroomData.code || 'N/A',
+                                            subject: classroomData.subject || 'N/A',
+                                            name: classroomData.name || 'N/A',
+                                            activeCheckins: [],
+                                        }
+                                    ].sort((a, b) => a.cid.localeCompare(b.cid));
+                                }
+                                return prevCourses;
+                            });
 
-                    courseList.push({
-                        cid,
-                        code: classroomData.code || 'N/A',
-                        subject: classroomData.subject || 'N/A',
-                        name: classroomData.name || 'N/A',
-                        activeCheckins,
+                            const checkinRef = collection(db, `classroom/${cid}/checkin`);
+                            const unsubscribeCheckin = onSnapshot(checkinRef, (checkinSnap) => {
+                                const activeCheckins = checkinSnap.docs
+                                    .map(doc => ({ id: doc.id, ...doc.data() }))
+                                    .filter(checkin => checkin.status === 1);
+
+                                setCourses(prevCourses => {
+                                    return prevCourses.map(course => 
+                                        course.cid === cid 
+                                            ? { ...course, activeCheckins }
+                                            : course
+                                    );
+                                });
+                            });
+
+                            unsubscribes.push(unsubscribeCheckin);
+                        } else {
+                            setCourses(prevCourses => prevCourses.filter(course => course.cid !== cid));
+                        }
                     });
-                }
-            }
-            setCourses(courseList);
-        };
-        fetchCoursesAndCheckins();
+
+                    unsubscribes.push(unsubscribeStudent);
+                });
+            });
+
+            // Cleanup subscriptions เมื่อ component unmount
+            return () => {
+                unsubscribes.forEach(unsubscribe => unsubscribe());
+            };
+        }, (error) => {
+            console.error("Error fetching user courses:", error);
+        });
+
+        return () => unsubscribeCourses();
     }, [user]);
 
     const handleLogout = async () => {
@@ -66,8 +111,12 @@ const HomeScreen = ({ navigation, user }) => {
                 <Text style={styles.courseText}>ชื่อ: {item.name}</Text>
             </View>
             <TouchableOpacity
-                style={styles.attendButton}
+                style={[
+                    styles.attendButton,
+                    { opacity: item.activeCheckins.length > 0 ? 1 : 0.5 }
+                ]}
                 onPress={() => handleAttend(item.cid)}
+                disabled={item.activeCheckins.length === 0}
             >
                 <Ionicons name="school" size={20} color="#fff" />
                 <Text style={styles.buttonText}>เข้าเรียน</Text>
@@ -194,7 +243,7 @@ const styles = StyleSheet.create({
         fontSize: 16,
         color: '#666',
         textAlign: 'center',
-        marginBottom: 20
+        marginBottom: 20,
     },
 });
 

@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { db } from "../firebase";
-import { doc, getDoc, collection, addDoc, getDocs, updateDoc, deleteDoc } from "firebase/firestore";
+import { doc, getDoc, collection, onSnapshot, updateDoc, deleteDoc } from "firebase/firestore";
 import { QRCodeCanvas } from "qrcode.react";
-import { AppBar, Toolbar, Typography, Button, Card, CardContent, CardMedia, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Box } from "@mui/material";
+import { AppBar, Toolbar, Typography, Button, Card, CardContent, CardMedia, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Box, Tabs, Tab } from "@mui/material";
 
 const ClassroomPage = () => {
     const { cid } = useParams();
@@ -12,9 +12,8 @@ const ClassroomPage = () => {
     const [students, setStudents] = useState([]);
     const [checkins, setCheckins] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [showTable, setShowTable] = useState(false);
     const [showQRCode, setShowQRCode] = useState(false);
-    const [showCheckinHistory, setShowCheckinHistory] = useState(false);
+    const [tabValue, setTabValue] = useState(0);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -28,24 +27,52 @@ const ClassroomPage = () => {
                 }
 
                 const studentsRef = collection(db, `classroom/${cid}/students`);
-                const studentSnap = await getDocs(studentsRef);
-                setStudents(studentSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+                const unsubscribeStudents = onSnapshot(studentsRef, (snapshot) => {
+                    const studentsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    setStudents(studentsData);
+                });
 
                 const checkinRef = collection(db, `classroom/${cid}/checkin`);
-                const checkinSnap = await getDocs(checkinRef);
-                const checkinList = await Promise.all(
-                    checkinSnap.docs.map(async (doc) => {
-                        const checkinData = { id: doc.id, ...doc.data() };
-                        // ดึงจำนวนนักเรียนที่เช็คชื่อในแต่ละ checkin
-                        const studentsCheckinRef = collection(db, `classroom/${cid}/checkin/${doc.id}/students`);
-                        const studentsCheckinSnap = await getDocs(studentsCheckinRef);
-                        return {
-                            ...checkinData,
-                            studentCount: studentsCheckinSnap.size, // จำนวนนักเรียนที่เช็คชื่อ
-                        };
-                    })
-                );
-                setCheckins(checkinList);
+                const unsubscribeCheckins = onSnapshot(checkinRef, (snapshot) => {
+                    const checkinList = snapshot.docs.map(doc => ({
+                        id: doc.id,
+                        ...doc.data(),
+                        studentCount: 0, // ค่าเริ่มต้น
+                    }));
+
+                    // ฟังข้อมูล scores แบบเรียลไทม์สำหรับแต่ละ checkin
+                    const scoreUnsubscribes = checkinList.map(checkin => {
+                        const scoresRef = collection(db, `classroom/${cid}/checkin/${checkin.id}/scores`);
+                        return onSnapshot(scoresRef, (scoresSnap) => {
+                            // นับเฉพาะนักเรียนที่มี status เป็น 1 (มาเรียน) หรือ 2 (มาสาย)
+                            const studentCount = scoresSnap.docs.reduce((count, doc) => {
+                                const status = doc.data().status;
+                                return (status === 1 || status === 2) ? count + 1 : count;
+                            }, 0);
+
+                            setCheckins(prevCheckins =>
+                                prevCheckins.map(prevCheckin =>
+                                    prevCheckin.id === checkin.id
+                                        ? { ...prevCheckin, studentCount: studentCount }
+                                        : prevCheckin
+                                )
+                            );
+                        }, (error) => {
+                            console.error(`Error fetching scores for checkin ${checkin.id}:`, error);
+                        });
+                    });
+
+                    setCheckins(checkinList);
+
+                    // Cleanup subscriptions
+                    return () => {
+                        unsubscribeStudents();
+                        unsubscribeCheckins();
+                        scoreUnsubscribes.forEach(unsub => unsub());
+                    };
+                }, (error) => {
+                    console.error("Error fetching checkins:", error);
+                });
             } catch (error) {
                 console.error("Error fetching data:", error);
             } finally {
@@ -59,7 +86,6 @@ const ClassroomPage = () => {
         try {
             const studentRef = doc(db, `classroom/${cid}/students`, studentId);
             await updateDoc(studentRef, { status: 1 });
-            setStudents(students.map(student => student.id === studentId ? { ...student, status: 1 } : student));
         } catch (error) {
             console.error("Error verifying student:", error);
         }
@@ -68,10 +94,13 @@ const ClassroomPage = () => {
     const handleRemoveStudent = async (studentId) => {
         try {
             await deleteDoc(doc(db, `classroom/${cid}/students`, studentId));
-            setStudents(students.filter(student => student.id !== studentId));
         } catch (error) {
             console.error("Error removing student:", error);
         }
+    };
+
+    const handleTabChange = (event, newValue) => {
+        setTabValue(newValue);
     };
 
     if (loading) return <Typography>Loading...</Typography>;
@@ -126,22 +155,6 @@ const ClassroomPage = () => {
                 <Box sx={{ mt: 3, display: "flex", justifyContent: "center", gap: 2 }}>
                     <Button
                         variant="contained"
-                        color="primary"
-                        onClick={() => setShowTable(!showTable)}
-                        sx={{ minWidth: 150 }}
-                    >
-                        {showTable ? "ซ่อนตารางรายชื่อ" : "แสดงตารางรายชื่อ"}
-                    </Button>
-                    <Button
-                        variant="contained"
-                        color="info"
-                        onClick={() => setShowCheckinHistory(!showCheckinHistory)}
-                        sx={{ minWidth: 150 }}
-                    >
-                        {showCheckinHistory ? "ซ่อนประวัติการเช็คชื่อ" : "ดูประวัติการเช็คชื่อ"}
-                    </Button>
-                    <Button
-                        variant="contained"
                         color="secondary"
                         sx={{ minWidth: 150 }}
                         onClick={() => navigate("/checkin", { state: { classroom, cid } })}
@@ -150,74 +163,93 @@ const ClassroomPage = () => {
                     </Button>
                 </Box>
 
-                {showTable && (
-                    <Box>
-                        <Typography variant="h5" sx={{ mt: 4 }}>รายชื่อนักเรียน</Typography>
-                        <TableContainer component={Paper} sx={{ mt: 2 }}>
-                            <Table>
-                                <TableHead>
-                                    <TableRow>
-                                        <TableCell>ลำดับ</TableCell>
-                                        <TableCell>รหัส</TableCell>
-                                        <TableCell>ชื่อ</TableCell>
-                                        <TableCell>สถานะ</TableCell>
-                                        <TableCell>ดำเนินการ</TableCell>
-                                    </TableRow>
-                                </TableHead>
-                                <TableBody>
-                                    {students.map((student, index) => (
-                                        <TableRow key={student.id}>
-                                            <TableCell>{index + 1}</TableCell>
-                                            <TableCell>{student.stdid}</TableCell>
-                                            <TableCell>{student.name}</TableCell>
-                                            <TableCell>{student.status === 0 ? "ยังไม่ตรวจสอบ" : "ตรวจสอบแล้ว"}</TableCell>
-                                            <TableCell>
-                                                {student.status === 0 && (
-                                                    <Button variant="contained" color="success" onClick={() => handleVerifyStudent(student.id)}>
-                                                        ยืนยัน
-                                                    </Button>
-                                                )}
-                                                <Button variant="contained" color="error" sx={{ ml: 1 }} onClick={() => handleRemoveStudent(student.id)}>
-                                                    ลบ
-                                                </Button>
-                                            </TableCell>
-                                        </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
-                        </TableContainer>
-                    </Box>
-                )}
+                <Box sx={{ mt: 4 }}>
+                    <Tabs value={tabValue} onChange={handleTabChange} centered>
+                        <Tab label="รายชื่อนักเรียน" />
+                        <Tab label="ประวัติการเช็คชื่อ" />
+                    </Tabs>
 
-                {showCheckinHistory && (
-                    <Box>
-                        <Typography variant="h5" sx={{ mt: 4 }}>ประวัติการเช็คชื่อ</Typography>
-                        <TableContainer component={Paper} sx={{ mt: 2 }}>
-                            <Table>
-                                <TableHead>
-                                    <TableRow>
-                                        <TableCell>ลำดับ</TableCell>
-                                        <TableCell>วันที่-เวลา</TableCell>
-                                        <TableCell>จำนวนคนเข้าเรียน</TableCell> {/* เพิ่มคอลัมน์ */}
-                                        <TableCell>สถานะ</TableCell>
-                                    </TableRow>
-                                </TableHead>
-                                <TableBody>
-                                    {checkins.map((checkin) => (
-                                        <TableRow key={checkin.id}>
-                                            <TableCell>{checkin.id}</TableCell>
-                                            <TableCell>{checkin.date}</TableCell>
-                                            <TableCell>{checkin.studentCount}</TableCell> {/* แสดงจำนวน */}
-                                            <TableCell>
-                                                {checkin.status === 0 ? "ยังไม่เริ่ม" : checkin.status === 1 ? "กำลังดำเนินการ" : "เสร็จสิ้น"}
-                                            </TableCell>
-                                        </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
-                        </TableContainer>
-                    </Box>
-                )}
+                    {tabValue === 0 && (
+                        <Box sx={{ mt: 2 }}>
+                            <Typography variant="h5" sx={{ mb: 2 }}>รายชื่อนักเรียน</Typography>
+                            {students.length > 0 ? (
+                                <TableContainer component={Paper}>
+                                    <Table>
+                                        <TableHead>
+                                            <TableRow>
+                                                <TableCell>ลำดับ</TableCell>
+                                                <TableCell>รหัส</TableCell>
+                                                <TableCell>ชื่อ</TableCell>
+                                                <TableCell>สถานะ</TableCell>
+                                                <TableCell>ดำเนินการ</TableCell>
+                                            </TableRow>
+                                        </TableHead>
+                                        <TableBody>
+                                            {students.map((student, index) => (
+                                                <TableRow key={student.id}>
+                                                    <TableCell>{index + 1}</TableCell>
+                                                    <TableCell>{student.stdid}</TableCell>
+                                                    <TableCell>{student.name}</TableCell>
+                                                    <TableCell>{student.status === 0 ? "ยังไม่ตรวจสอบ" : "ตรวจสอบแล้ว"}</TableCell>
+                                                    <TableCell>
+                                                        {student.status === 0 && (
+                                                            <Button variant="contained" color="success" onClick={() => handleVerifyStudent(student.id)}>
+                                                                ยืนยัน
+                                                            </Button>
+                                                        )}
+                                                        <Button variant="contained" color="error" sx={{ ml: 1 }} onClick={() => handleRemoveStudent(student.id)}>
+                                                            ลบ
+                                                        </Button>
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))}
+                                        </TableBody>
+                                    </Table>
+                                </TableContainer>
+                            ) : (
+                                <Typography variant="body1" sx={{ textAlign: "center" }}>
+                                    ไม่มีรายชื่อนักเรียนในขณะนี้
+                                </Typography>
+                            )}
+                        </Box>
+                    )}
+
+                    {tabValue === 1 && (
+                        <Box sx={{ mt: 2 }}>
+                            <Typography variant="h5" sx={{ mb: 2 }}>ประวัติการเช็คชื่อ</Typography>
+                            {checkins.length > 0 ? (
+                                <TableContainer component={Paper}>
+                                    <Table>
+                                        <TableHead>
+                                            <TableRow>
+                                                <TableCell>ลำดับ</TableCell>
+                                                <TableCell>วันที่-เวลา</TableCell>
+                                                <TableCell>จำนวนคนเข้าเรียน</TableCell>
+                                                <TableCell>สถานะ</TableCell>
+                                            </TableRow>
+                                        </TableHead>
+                                        <TableBody>
+                                            {checkins.map((checkin) => (
+                                                <TableRow key={checkin.id}>
+                                                    <TableCell>{checkin.id}</TableCell>
+                                                    <TableCell>{checkin.date}</TableCell>
+                                                    <TableCell>{checkin.studentCount}</TableCell>
+                                                    <TableCell>
+                                                        {checkin.status === 0 ? "ยังไม่เริ่ม" : checkin.status === 1 ? "กำลังดำเนินการ" : "เสร็จสิ้น"}
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))}
+                                        </TableBody>
+                                    </Table>
+                                </TableContainer>
+                            ) : (
+                                <Typography variant="body1" sx={{ textAlign: "center" }}>
+                                    ไม่มีประวัติการเช็คชื่อในขณะนี้
+                                </Typography>
+                            )}
+                        </Box>
+                    )}
+                </Box>
             </Box>
         </Box>
     );
