@@ -1,7 +1,8 @@
 {
   "expo": {
-    "name": "mobile-app",
-    "slug": "mobile-app",
+    "name": "mobile-app-2",
+    "slug": "mobile-app-2",
+    "plugins": ["@react-native-firebase/app", "@react-native-firebase/auth"],
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -13,26 +14,22 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true,
-      "bundleIdentifier": "com.attawatkammas.mobileapp",
-      "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
-      }
+      "supportsTablet": true
     },
     "android": {
+      "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.attawatkammas.mobileapp"
+      "package": "com.n4mun.mobileapp2"
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
-    "plugins": [],
     "extra": {
       "eas": {
-        "projectId": "a19e1d6f-7ee3-4340-9ab9-f422f5ff27d4"
+        "projectId": "4e304e11-6738-4437-bbdc-6896dd1c9f9e"
       }
     }
   }
