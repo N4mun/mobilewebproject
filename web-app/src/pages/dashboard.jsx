@@ -46,19 +46,75 @@ const Dashboard = () => {
         fetchUserClasses();
     }, [user]);
 
-    // ฟังก์ชันเปิด Dialog ยืนยันการลบ
     const confirmDelete = (classData) => {
         setSelectedClass(classData);
         setOpenDialog(true);
     };
 
-    // ฟังก์ชันลบห้องเรียน
     const handleDeleteClass = async () => {
         if (!selectedClass) return;
-
+    
         try {
-            await deleteDoc(doc(db, "classroom", selectedClass.id));
-            setClasses(classes.filter((c) => c.id !== selectedClass.id));
+            const user = auth.currentUser;
+            const cid = selectedClass.id;
+    
+            // 1. ดึงข้อมูลนักเรียนทั้งหมดในห้องเรียนนี้
+            const studentsRef = collection(db, `classroom/${cid}/students`);
+            const studentsSnap = await getDocs(studentsRef);
+            const studentIds = studentsSnap.docs.map(doc => doc.id);
+    
+            // 2. ลบข้อมูลใน users/{student.uid}/classroom/{cid} ของนักเรียนทุกคน
+            const studentDeletePromises = studentIds.map(studentId =>
+                deleteDoc(doc(db, `users/${studentId}/classroom`, cid))
+            );
+            await Promise.all(studentDeletePromises);
+    
+            // 3. ลบ subcollection students ใน classroom/{cid}
+            const studentDocsDeletePromises = studentIds.map(studentId =>
+                deleteDoc(doc(db, `classroom/${cid}/students`, studentId))
+            );
+            await Promise.all(studentDocsDeletePromises);
+    
+            // 4. ลบ subcollection checkin (รวมถึง subcollection ภายใน เช่น scores, answers)
+            const checkinRef = collection(db, `classroom/${cid}/checkin`);
+            const checkinSnap = await getDocs(checkinRef);
+            for (const checkinDoc of checkinSnap.docs) {
+                const checkinId = checkinDoc.id;
+    
+                // ลบ subcollection scores
+                const scoresRef = collection(db, `classroom/${cid}/checkin/${checkinId}/scores`);
+                const scoresSnap = await getDocs(scoresRef);
+                const scoresDeletePromises = scoresSnap.docs.map(scoreDoc =>
+                    deleteDoc(doc(db, `classroom/${cid}/checkin/${checkinId}/scores`, scoreDoc.id))
+                );
+                await Promise.all(scoresDeletePromises);
+    
+                // ลบ subcollection answers (ถ้ามีคำถาม)
+                const answersRef = collection(db, `classroom/${cid}/checkin/${checkinId}/answers`);
+                const answersSnap = await getDocs(answersRef);
+                for (const answerDoc of answersSnap.docs) {
+                    const answerId = answerDoc.id;
+                    const studentsAnswersRef = collection(db, `classroom/${cid}/checkin/${checkinId}/answers/${answerId}/students`);
+                    const studentsAnswersSnap = await getDocs(studentsAnswersRef);
+                    const studentsAnswersDeletePromises = studentsAnswersSnap.docs.map(studentDoc =>
+                        deleteDoc(doc(db, `classroom/${cid}/checkin/${checkinId}/answers/${answerId}/students`, studentDoc.id))
+                    );
+                    await Promise.all(studentsAnswersDeletePromises);
+                    await deleteDoc(doc(db, `classroom/${cid}/checkin/${checkinId}/answers`, answerId));
+                }
+    
+                // ลบเอกสาร checkin หลัก
+                await deleteDoc(doc(db, `classroom/${cid}/checkin`, checkinId));
+            }
+    
+            // 5. ลบเอกสารหลักใน classroom/{cid}
+            await deleteDoc(doc(db, "classroom", cid));
+    
+            // 6. ลบข้อมูลใน users/{teacher.uid}/classroom/{cid} (ของอาจารย์)
+            await deleteDoc(doc(db, "users", user.uid, "classroom", cid));
+    
+            // อัปเดต UI
+            setClasses(classes.filter((c) => c.id !== cid));
         } catch (error) {
             console.error("Error deleting class:", error);
         } finally {
@@ -69,7 +125,6 @@ const Dashboard = () => {
 
     return (
         <Box>
-
             <AppBar position="static">
                 <Toolbar>
                     <Typography variant="h6" sx={{ flexGrow: 1 }}>
@@ -80,15 +135,11 @@ const Dashboard = () => {
             </AppBar>
 
             <Box sx={{ textAlign: "center", mt: 3, px: 2 }}>
-
-                {/* ข้อมูลผู้ใช้ */}
                 <Typography variant="h4" gutterBottom>ข้อมูลผู้ใช้</Typography>
-
                 <Card sx={{ maxWidth: 400, mx: "auto", p: 3, textAlign: "center", boxShadow: 3 }}>
                     <Avatar src={userData.photo} sx={{ width: 80, height: 80, mx: "auto", mb: 2 }} />
                     <Typography variant="h6">{userData.name}</Typography>
                     <Typography color="textSecondary">{userData.email}</Typography>
-
                     <Box sx={{ display: "flex", justifyContent: "center", gap: 2, mt: 2 }}>
                         <Button variant="outlined" color="primary" onClick={() => navigate("/edit-profile")}>
                             แก้ไขข้อมูลส่วนตัว
@@ -99,9 +150,7 @@ const Dashboard = () => {
                     </Box>
                 </Card>
 
-                {/* ห้องเรียน */}
                 <Typography variant="h4" sx={{ mt: 5 }}>ห้องเรียนของฉัน</Typography>
-
                 <Button variant="contained" color="primary" onClick={() => navigate("/add-class")} sx={{ mt: 2, mb: 3 }}>
                     เพิ่มห้องเรียน
                 </Button>
@@ -137,7 +186,6 @@ const Dashboard = () => {
                         </Grid>
                     ))}
                 </Grid>
-
 
                 <Dialog open={openDialog} onClose={() => setOpenDialog(false)}>
                     <DialogTitle>ยืนยันการลบ</DialogTitle>

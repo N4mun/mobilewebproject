@@ -7,6 +7,7 @@ import Dashboard from "./pages/dashboard";
 import EditProfile from "./pages/editprofile";
 import AddClass from "./pages/addclass";
 import Classroom from "./pages/classroom";
+import Checkin from "./pages/checkin";
 import PrivateRoute from "./components/PrivateRoute";
 
 const App = () => {
@@ -52,6 +53,15 @@ const App = () => {
         element={
           <PrivateRoute>
             <Classroom />
+          </PrivateRoute>
+        }
+      />
+
+      <Route
+        path="/checkin"
+        element={
+          <PrivateRoute>
+            <Checkin />
           </PrivateRoute>
         }
       />

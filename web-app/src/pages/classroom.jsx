@@ -1,10 +1,9 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { db } from "../firebase";
-import { doc, getDoc, collection, addDoc, getDocs, updateDoc, deleteDoc } from "firebase/firestore";
+import { doc, getDoc, collection, onSnapshot, updateDoc, deleteDoc } from "firebase/firestore";
 import { QRCodeCanvas } from "qrcode.react";
-import { AppBar, Toolbar, Typography, Button, Card, CardContent, CardMedia, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Box, TextField, Dialog, DialogTitle, DialogContent, DialogActions, List, ListItem, ListItemText, Divider, IconButton } from "@mui/material";
-import { Delete, Edit, Save } from "@mui/icons-material";
+import { AppBar, Toolbar, Typography, Button, Card, CardContent, CardMedia, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Box, Tabs, Tab } from "@mui/material";
 
 const ClassroomPage = () => {
     const { cid } = useParams();
@@ -13,15 +12,8 @@ const ClassroomPage = () => {
     const [students, setStudents] = useState([]);
     const [checkins, setCheckins] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [showTable, setShowTable] = useState(false);
     const [showQRCode, setShowQRCode] = useState(false);
-    const [openQuestionDialog, setOpenQuestionDialog] = useState(false);
-    const [question, setQuestion] = useState("");
-    const [answer, setAnswer] = useState("");
-    const [questions, setQuestions] = useState([]);
-    const [editingQuestion, setEditingQuestion] = useState(null);
-    const [scores, setScores] = useState([]); // State สำหรับเก็บข้อมูลคะแนน
-    const [showScoresTable, setShowScoresTable] = useState(false); // State สำหรับแสดงตารางคะแนน
+    const [tabValue, setTabValue] = useState(0);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -35,28 +27,52 @@ const ClassroomPage = () => {
                 }
 
                 const studentsRef = collection(db, `classroom/${cid}/students`);
-                const studentSnap = await getDocs(studentsRef);
-                setStudents(studentSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+                const unsubscribeStudents = onSnapshot(studentsRef, (snapshot) => {
+                    const studentsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    setStudents(studentsData);
+                });
 
                 const checkinRef = collection(db, `classroom/${cid}/checkin`);
-                const checkinSnap = await getDocs(checkinRef);
-                setCheckins(checkinSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+                const unsubscribeCheckins = onSnapshot(checkinRef, (snapshot) => {
+                    const checkinList = snapshot.docs.map(doc => ({
+                        id: doc.id,
+                        ...doc.data(),
+                        studentCount: 0, // ค่าเริ่มต้น
+                    }));
 
-                // ดึงข้อมูลคำถาม
-                const questionsRef = collection(db, `classroom/${cid}/questions`);
-                const questionsSnap = await getDocs(questionsRef);
-                setQuestions(questionsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+                    // ฟังข้อมูล scores แบบเรียลไทม์สำหรับแต่ละ checkin
+                    const scoreUnsubscribes = checkinList.map(checkin => {
+                        const scoresRef = collection(db, `classroom/${cid}/checkin/${checkin.id}/scores`);
+                        return onSnapshot(scoresRef, (scoresSnap) => {
+                            // นับเฉพาะนักเรียนที่มี status เป็น 1 (มาเรียน) หรือ 2 (มาสาย)
+                            const studentCount = scoresSnap.docs.reduce((count, doc) => {
+                                const status = doc.data().status;
+                                return (status === 1 || status === 2) ? count + 1 : count;
+                            }, 0);
 
-                // ดึงข้อมูลคะแนน
-                const scoresRef = collection(db, `classroom/${cid}/checkin`);
-                const scoresSnap = await getDocs(scoresRef);
-                const scoresData = [];
-                for (const checkinDoc of scoresSnap.docs) {
-                    const scoresCollectionRef = collection(db, `classroom/${cid}/checkin/${checkinDoc.id}/scores`);
-                    const scoresCollectionSnap = await getDocs(scoresCollectionRef);
-                    scoresData.push(...scoresCollectionSnap.docs.map(doc => ({ id: doc.id, checkinId: checkinDoc.id, ...doc.data() })));
-                }
-                setScores(scoresData);
+                            setCheckins(prevCheckins =>
+                                prevCheckins.map(prevCheckin =>
+                                    prevCheckin.id === checkin.id
+                                        ? { ...prevCheckin, studentCount: studentCount }
+                                        : prevCheckin
+                                )
+                            );
+                        }, (error) => {
+                            console.error(`Error fetching scores for checkin ${checkin.id}:`, error);
+                        });
+                    });
+
+                    setCheckins(checkinList);
+
+                    // Cleanup subscriptions
+                    return () => {
+                        unsubscribeStudents();
+                        unsubscribeCheckins();
+                        scoreUnsubscribes.forEach(unsub => unsub());
+                    };
+                }, (error) => {
+                    console.error("Error fetching checkins:", error);
+                });
             } catch (error) {
                 console.error("Error fetching data:", error);
             } finally {
@@ -70,7 +86,6 @@ const ClassroomPage = () => {
         try {
             const studentRef = doc(db, `classroom/${cid}/students`, studentId);
             await updateDoc(studentRef, { status: 1 });
-            setStudents(students.map(student => student.id === studentId ? { ...student, status: 1 } : student));
         } catch (error) {
             console.error("Error verifying student:", error);
         }
@@ -79,82 +94,13 @@ const ClassroomPage = () => {
     const handleRemoveStudent = async (studentId) => {
         try {
             await deleteDoc(doc(db, `classroom/${cid}/students`, studentId));
-            setStudents(students.filter(student => student.id !== studentId));
         } catch (error) {
             console.error("Error removing student:", error);
         }
     };
 
-    const handleOpenQuestionDialog = () => {
-        setOpenQuestionDialog(true);
-    };
-
-    const handleCloseQuestionDialog = () => {
-        setOpenQuestionDialog(false);
-        setQuestion("");
-        setAnswer("");
-        setEditingQuestion(null);
-    };
-
-    const handleSaveQuestion = async () => {
-        try {
-            const questionsRef = collection(db, `classroom/${cid}/questions`);
-            const newQuestion = {
-                question,
-                answer,
-                timestamp: new Date()
-            };
-            if (editingQuestion) {
-                const questionRef = doc(db, `classroom/${cid}/questions`, editingQuestion.id);
-                await updateDoc(questionRef, newQuestion);
-                setQuestions(questions.map(q => q.id === editingQuestion.id ? { ...q, ...newQuestion } : q));
-            } else {
-                const docRef = await addDoc(questionsRef, newQuestion);
-                setQuestions([...questions, { id: docRef.id, ...newQuestion }]);
-            }
-            handleCloseQuestionDialog();
-        } catch (error) {
-            console.error("Error saving question:", error);
-        }
-    };
-
-    const handleDeleteQuestion = async (questionId) => {
-        try {
-            await deleteDoc(doc(db, `classroom/${cid}/questions`, questionId));
-            setQuestions(questions.filter(q => q.id !== questionId));
-        } catch (error) {
-            console.error("Error deleting question:", error);
-        }
-    };
-
-    const handleEditQuestion = (question) => {
-        setQuestion(question.question);
-        setAnswer(question.answer);
-        setEditingQuestion(question);
-        setOpenQuestionDialog(true);
-    };
-
-    const handleScoreChange = (id, field, value) => {
-        setScores(scores.map(score => 
-            score.id === id ? { ...score, [field]: value } : score
-        ));
-    };
-
-    const handleSaveScores = async () => {
-        try {
-            for (const score of scores) {
-                const scoreRef = doc(db, `classroom/${cid}/checkin/${score.checkinId}/scores`, score.id);
-                await updateDoc(scoreRef, {
-                    score: score.score,
-                    note: score.note,
-                    status: score.status
-                });
-            }
-            alert("บันทึกข้อมูลสำเร็จ");
-        } catch (error) {
-            console.error("Error saving scores:", error);
-            alert("เกิดข้อผิดพลาดในการบันทึกข้อมูล");
-        }
+    const handleTabChange = (event, newValue) => {
+        setTabValue(newValue);
     };
 
     if (loading) return <Typography>Loading...</Typography>;
@@ -209,186 +155,102 @@ const ClassroomPage = () => {
                 <Box sx={{ mt: 3, display: "flex", justifyContent: "center", gap: 2 }}>
                     <Button
                         variant="contained"
-                        color="primary"
-                        onClick={() => setShowTable(!showTable)}
-                        sx={{ minWidth: 150 }}
-                    >
-                        {showTable ? "ซ่อนตารางรายชื่อ" : "แสดงตารางรายชื่อ"}
-                    </Button>
-                    <Button
-                        variant="contained"
                         color="secondary"
-                        onClick={handleOpenQuestionDialog}
                         sx={{ minWidth: 150 }}
+                        onClick={() => navigate("/checkin", { state: { classroom, cid } })}
                     >
-                        เพิ่มคำถาม
-                    </Button>
-                    <Button
-                        variant="contained"
-                        color="info"
-                        onClick={() => setShowScoresTable(!showScoresTable)}
-                        sx={{ minWidth: 150 }}
-                    >
-                        {showScoresTable ? "ซ่อนคะแนน" : "แสดงคะแนน"}
+                        เช็คชื่อ
                     </Button>
                 </Box>
 
-                {showTable && (
-                    <Box>
-                        <Typography variant="h5" sx={{ mt: 4 }}>รายชื่อนักเรียน</Typography>
-                        <TableContainer component={Paper} sx={{ mt: 2 }}>
-                            <Table>
-                                <TableHead>
-                                    <TableRow>
-                                        <TableCell>ลำดับ</TableCell>
-                                        <TableCell>รหัส</TableCell>
-                                        <TableCell>ชื่อ</TableCell>
-                                        <TableCell>สถานะ</TableCell>
-                                        <TableCell>ดำเนินการ</TableCell>
-                                    </TableRow>
-                                </TableHead>
-                                <TableBody>
-                                    {students.map((student, index) => (
-                                        <TableRow key={student.id}>
-                                            <TableCell>{index + 1}</TableCell>
-                                            <TableCell>{student.stdid}</TableCell>
-                                            <TableCell>{student.name}</TableCell>
-                                            <TableCell>{student.status === 0 ? "ยังไม่ตรวจสอบ" : "ตรวจสอบแล้ว"}</TableCell>
-                                            <TableCell>
-                                                {student.status === 0 && (
-                                                    <Button variant="contained" color="success" onClick={() => handleVerifyStudent(student.id)}>
-                                                        ยืนยัน
-                                                    </Button>
-                                                )}
-                                                <Button variant="contained" color="error" sx={{ ml: 1 }} onClick={() => handleRemoveStudent(student.id)}>
-                                                    ลบ
-                                                </Button>
-                                            </TableCell>
-                                        </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
-                        </TableContainer>
-                    </Box>
-                )}
-
-                {showScoresTable && (
-                    <Box sx={{ mt: 4 }}>
-                        <Typography variant="h5">คะแนนการเช็คชื่อ</Typography>
-                        <TableContainer component={Paper} sx={{ mt: 2 }}>
-                            <Table>
-                                <TableHead>
-                                    <TableRow>
-                                        <TableCell>ลำดับ</TableCell>
-                                        <TableCell>รหัส</TableCell>
-                                        <TableCell>ชื่อ</TableCell>
-                                        <TableCell>หมายเหตุ</TableCell>
-                                        <TableCell>วันเวลา</TableCell>
-                                        <TableCell>คะแนน</TableCell>
-                                        <TableCell>สถานะ</TableCell>
-                                    </TableRow>
-                                </TableHead>
-                                <TableBody>
-                                    {scores.map((score, index) => (
-                                        <TableRow key={score.id}>
-                                            <TableCell>{index + 1}</TableCell>
-                                            <TableCell>{score.stdid}</TableCell>
-                                            <TableCell>{score.name}</TableCell>
-                                            <TableCell>
-                                                <TextField
-                                                    value={score.note || ""}
-                                                    onChange={(e) => handleScoreChange(score.id, "note", e.target.value)}
-                                                    size="small"
-                                                />
-                                            </TableCell>
-                                            <TableCell>{new Date(score.timestamp?.toDate()).toLocaleString()}</TableCell>
-                                            <TableCell>
-                                                <TextField
-                                                    value={score.score || ""}
-                                                    onChange={(e) => handleScoreChange(score.id, "score", e.target.value)}
-                                                    size="small"
-                                                    type="number"
-                                                />
-                                            </TableCell>
-                                            <TableCell>
-                                                <TextField
-                                                    value={score.status || ""}
-                                                    onChange={(e) => handleScoreChange(score.id, "status", e.target.value)}
-                                                    size="small"
-                                                />
-                                            </TableCell>
-                                        </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
-                        </TableContainer>
-                        <Button
-                            variant="contained"
-                            color="primary"
-                            onClick={handleSaveScores}
-                            sx={{ mt: 2 }}
-                            startIcon={<Save />}
-                        >
-                            บันทึกข้อมูล
-                        </Button>
-                    </Box>
-                )}
-
-                {/* แสดงรายการคำถาม */}
                 <Box sx={{ mt: 4 }}>
-                    <Typography variant="h5">รายการคำถาม</Typography>
-                    <List sx={{ width: '100%', maxWidth: 600, mx: 'auto', bgcolor: 'background.paper' }}>
-                        {questions.map((q, index) => (
-                            <React.Fragment key={q.id}>
-                                <ListItem alignItems="flex-start">
-                                    <ListItemText
-                                        primary={`คำถามที่ ${index + 1}: ${q.question}`}
-                                        secondary={`คำตอบ: ${q.answer}`}
-                                    />
-                                    <IconButton onClick={() => handleEditQuestion(q)}>
-                                        <Edit />
-                                    </IconButton>
-                                    <IconButton onClick={() => handleDeleteQuestion(q.id)}>
-                                        <Delete />
-                                    </IconButton>
-                                </ListItem>
-                                {index < questions.length - 1 && <Divider />}
-                            </React.Fragment>
-                        ))}
-                    </List>
+                    <Tabs value={tabValue} onChange={handleTabChange} centered>
+                        <Tab label="รายชื่อนักเรียน" />
+                        <Tab label="ประวัติการเช็คชื่อ" />
+                    </Tabs>
+
+                    {tabValue === 0 && (
+                        <Box sx={{ mt: 2 }}>
+                            <Typography variant="h5" sx={{ mb: 2 }}>รายชื่อนักเรียน</Typography>
+                            {students.length > 0 ? (
+                                <TableContainer component={Paper}>
+                                    <Table>
+                                        <TableHead>
+                                            <TableRow>
+                                                <TableCell>ลำดับ</TableCell>
+                                                <TableCell>รหัส</TableCell>
+                                                <TableCell>ชื่อ</TableCell>
+                                                <TableCell>สถานะ</TableCell>
+                                                <TableCell>ดำเนินการ</TableCell>
+                                            </TableRow>
+                                        </TableHead>
+                                        <TableBody>
+                                            {students.map((student, index) => (
+                                                <TableRow key={student.id}>
+                                                    <TableCell>{index + 1}</TableCell>
+                                                    <TableCell>{student.stdid}</TableCell>
+                                                    <TableCell>{student.name}</TableCell>
+                                                    <TableCell>{student.status === 0 ? "ยังไม่ตรวจสอบ" : "ตรวจสอบแล้ว"}</TableCell>
+                                                    <TableCell>
+                                                        {student.status === 0 && (
+                                                            <Button variant="contained" color="success" onClick={() => handleVerifyStudent(student.id)}>
+                                                                ยืนยัน
+                                                            </Button>
+                                                        )}
+                                                        <Button variant="contained" color="error" sx={{ ml: 1 }} onClick={() => handleRemoveStudent(student.id)}>
+                                                            ลบ
+                                                        </Button>
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))}
+                                        </TableBody>
+                                    </Table>
+                                </TableContainer>
+                            ) : (
+                                <Typography variant="body1" sx={{ textAlign: "center" }}>
+                                    ไม่มีรายชื่อนักเรียนในขณะนี้
+                                </Typography>
+                            )}
+                        </Box>
+                    )}
+
+                    {tabValue === 1 && (
+                        <Box sx={{ mt: 2 }}>
+                            <Typography variant="h5" sx={{ mb: 2 }}>ประวัติการเช็คชื่อ</Typography>
+                            {checkins.length > 0 ? (
+                                <TableContainer component={Paper}>
+                                    <Table>
+                                        <TableHead>
+                                            <TableRow>
+                                                <TableCell>ลำดับ</TableCell>
+                                                <TableCell>วันที่-เวลา</TableCell>
+                                                <TableCell>จำนวนคนเข้าเรียน</TableCell>
+                                                <TableCell>สถานะ</TableCell>
+                                            </TableRow>
+                                        </TableHead>
+                                        <TableBody>
+                                            {checkins.map((checkin) => (
+                                                <TableRow key={checkin.id}>
+                                                    <TableCell>{checkin.id}</TableCell>
+                                                    <TableCell>{checkin.date}</TableCell>
+                                                    <TableCell>{checkin.studentCount}</TableCell>
+                                                    <TableCell>
+                                                        {checkin.status === 0 ? "ยังไม่เริ่ม" : checkin.status === 1 ? "กำลังดำเนินการ" : "เสร็จสิ้น"}
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))}
+                                        </TableBody>
+                                    </Table>
+                                </TableContainer>
+                            ) : (
+                                <Typography variant="body1" sx={{ textAlign: "center" }}>
+                                    ไม่มีประวัติการเช็คชื่อในขณะนี้
+                                </Typography>
+                            )}
+                        </Box>
+                    )}
                 </Box>
             </Box>
-
-            <Dialog open={openQuestionDialog} onClose={handleCloseQuestionDialog}>
-                <DialogTitle>{editingQuestion ? "แก้ไขคำถาม" : "เพิ่มคำถาม"}</DialogTitle>
-                <DialogContent>
-                    <TextField
-                        autoFocus
-                        margin="dense"
-                        label="คำถาม"
-                        type="text"
-                        fullWidth
-                        value={question}
-                        onChange={(e) => setQuestion(e.target.value)}
-                    />
-                    <TextField
-                        margin="dense"
-                        label="คำตอบ"
-                        type="text"
-                        fullWidth
-                        value={answer}
-                        onChange={(e) => setAnswer(e.target.value)}
-                    />
-                </DialogContent>
-                <DialogActions>
-                    <Button onClick={handleCloseQuestionDialog} color="primary">
-                        ยกเลิก
-                    </Button>
-                    <Button onClick={handleSaveQuestion} color="primary">
-                        {editingQuestion ? "อัพเดต" : "บันทึก"}
-                    </Button>
-                </DialogActions>
-            </Dialog>
         </Box>
     );
 };

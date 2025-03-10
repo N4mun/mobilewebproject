@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, StyleSheet, Alert, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { db, auth } from '../firebaseConfig';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
-import { Ionicons } from '@expo/vector-icons'; // ใช้ไอคอนจาก Expo
+import { Ionicons } from '@expo/vector-icons';
 
 const AddCourseScreen = ({ navigation, route }) => {
     const [cid, setCid] = useState('');
@@ -30,6 +30,15 @@ const AddCourseScreen = ({ navigation, route }) => {
 
         setLoading(true);
         try {
+            // ตรวจสอบว่ารหัสวิชา (cid) มีอยู่ในระบบหรือไม่
+            const classroomRef = doc(db, 'classroom', cid);
+            const classroomSnap = await getDoc(classroomRef);
+            if (!classroomSnap.exists()) {
+                Alert.alert('Error', 'รหัสวิชา (CID) ไม่มีอยู่ในระบบ กรุณาตรวจสอบอีกครั้ง');
+                setLoading(false);
+                return;
+            }
+
             const studentRef = doc(db, 'classroom', cid, 'students', user.uid);
             const userRef = doc(db, 'users', user.uid, 'classroom', cid);
 
@@ -37,6 +46,7 @@ const AddCourseScreen = ({ navigation, route }) => {
             const docSnap = await getDoc(studentRef);
             if (docSnap.exists()) {
                 Alert.alert('Error', 'คุณลงทะเบียนวิชานี้ไปแล้ว');
+                setLoading(false);
                 return;
             }
 
@@ -45,6 +55,9 @@ const AddCourseScreen = ({ navigation, route }) => {
 
             Alert.alert('Success', 'ลงทะเบียนเข้าห้องเรียนสำเร็จ!');
             navigation.navigate('AddCourse');
+            setCid('');
+            setStdid('');
+            setName('');
         } catch (error) {
             Alert.alert('Error', 'ไม่สามารถลงทะเบียนได้: ' + error.message);
         } finally {
